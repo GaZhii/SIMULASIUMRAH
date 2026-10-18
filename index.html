@@ -3,61 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Labbaik: The Sacred Journey (Simulasi Umrah 2D)</title>
+    <title>Labbaik 3D: The Sacred Journey (Simulasi Umrah 3D)</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #111; color: #fff; text-align: center; overflow: hidden; }
-        h1 { color: #d4af37; margin-top: 10px; font-size: 24px; }
-        p.sub { color: #aaa; font-size: 14px; margin-bottom: 10px; }
+        body { background-color: #0b0c10; color: #fff; text-align: center; overflow: hidden; }
         
-        #game-container { position: relative; width: 1000px; height: 600px; margin: 0 auto; border: 3px solid #d4af37; border-radius: 8px; box-shadow: 0 0 20px rgba(212, 175, 55, 0.2); }
-        canvas { background-color: #e6d7b8; display: block; border-radius: 5px; }
+        #canvas-container { position: relative; width: 100vw; height: 100vh; }
+        canvas { display: block; width: 100%; height: 100%; }
         
-        /* Modal & UI Elements */
+        /* HUD & Game UI Overlay */
+        #title-bar { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.7); padding: 10px 25px; border-radius: 20px; border: 2px solid #d4af37; box-shadow: 0 0 15px rgba(212, 175, 55, 0.4); text-align: center; }
+        #title-bar h1 { color: #d4af37; font-size: 20px; letter-spacing: 1px; }
+        #title-bar p { color: #ccc; font-size: 12px; }
+
+        #hud { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; text-align: left; font-size: 13px; color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.5); min-width: 220px; pointer-events: none; }
+        #hud div { margin-bottom: 6px; }
+
+        #action-prompt { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: none; gap: 15px; z-index: 10; }
+        .btn { background: linear-gradient(135deg, #d4af37, #aa7c11); color: #000; border: none; padding: 12px 24px; font-weight: bold; cursor: pointer; border-radius: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: 0.2s; }
+        .btn:hover { transform: scale(1.08); background: #f3cf65; }
+
+        /* Modal Windows */
         .modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-                 background: #222; border: 2px solid #d4af37; padding: 20px; border-radius: 10px; width: 420px; z-index: 100; box-shadow: 0 0 25px rgba(0,0,0,0.9); }
-        .modal h2 { color: #d4af37; margin-bottom: 10px; font-size: 20px; }
-        .modal p { color: #ddd; font-size: 14px; margin-bottom: 15px; line-height: 1.5; text-align: left; }
-        .btn { background: #d4af37; color: #000; border: none; padding: 10px 18px; font-weight: bold; cursor: pointer; border-radius: 5px; margin: 5px; transition: 0.2s; }
-        .btn:hover { background: #f3cf65; transform: scale(1.03); }
-        
-        #hud { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.75); padding: 12px; border-radius: 6px; text-align: left; font-size: 13px; color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.4); pointer-events: none; }
-        #hud div { margin-bottom: 4px; }
-        #action-prompt { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: none; gap: 10px; }
+                 background: #1a1a1a; border: 2px solid #d4af37; padding: 25px; border-radius: 12px; width: 450px; z-index: 100; box-shadow: 0 0 30px rgba(0,0,0,0.9); }
+        .modal h2 { color: #d4af37; margin-bottom: 12px; font-size: 22px; }
+        .modal p { color: #ddd; font-size: 14px; margin-bottom: 20px; line-height: 1.6; text-align: left; }
     </style>
 
+    <!-- Three.js Library & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <!-- Firebase Realtime Database SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
 
-    <h1>Labbaik: The Sacred Journey</h1>
-    <p class="sub">Gunakan kekunci <b>W, A, S, D</b> atau <b>Anak Panah</b> untuk bergerak ke checkpoint.</p>
+    <div id="canvas-container">
+        <div id="title-bar">
+            <h1>LABBAIK 3D: SIMULASI UMRAH</h1>
+            <p>Gunakan kekunci <b>W, A, S, D</b> / <b>Anak Panah</b> untuk mengawal avatar 3D</p>
+        </div>
 
-    <div id="game-container">
-        <canvas id="gameCanvas" width="1000" height="600"></canvas>
-        
         <div id="hud">
             <div><b>ID Pemain:</b> <span id="player-id">Menyambung...</span></div>
             <div><b>Pemain Aktif:</b> <span id="player-count">1</span>/30</div>
-            <div><b>Checkpoint Semasa:</b> <span id="current-cp">Tiada</span></div>
+            <div><b>LOKASI:</b> <span id="current-cp">Kawasan Masjid</span></div>
             <div><b>Pusingan Tawaf:</b> <span id="tawaf-count">0</span>/7</div>
         </div>
 
         <div id="action-prompt">
-            <button class="btn" onclick="openInfoModal()">Info Checkpoint</button>
+            <button class="btn" onclick="openInfoModal()">Buka Info Checkpoint</button>
             <button class="btn" onclick="triggerSimulation()">Mula Simulasi</button>
         </div>
 
-        <!-- Modal Info -->
+        <!-- Info Modal -->
         <div id="infoModal" class="modal">
             <h2 id="modal-title">Info Checkpoint</h2>
-            <p id="modal-desc">Maklumat berkaitan checkpoint...</p>
+            <p id="modal-desc">Maklumat berkaitan tempat suci...</p>
             <button class="btn" onclick="closeModal('infoModal')">Tutup</button>
         </div>
 
-        <!-- Modal Kuiz Safwa Tower -->
+        <!-- Quiz Modal -->
         <div id="quizModal" class="modal">
             <h2>Kuiz Safwa Tower</h2>
             <p id="quiz-question">Soalan Kuiz...</p>
@@ -66,188 +73,262 @@
     </div>
 
     <script>
-        // 1. Tetapan Demo Firebase (Gunakan pengkalan data awam terbuka)
-        const firebaseConfig = {
-            databaseURL: "https://labbaik-umrah-default-rtdb.asia-southeast1.firebasedatabase.app"
-        };
-        
-        // Semak/Inisialisasi Firebase
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        // --- 1. FIREBASE SETUP (Multiplayer 30 Pemain) ---
+        const firebaseConfig = { databaseURL: "https://labbaik-umrah-default-rtdb.asia-southeast1.firebasedatabase.app" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        
-        // Jana ID unik pemain
         const playerId = "p_" + Math.random().toString(36).substr(2, 6);
         document.getElementById('player-id').innerText = playerId;
 
-        const playerRef = db.ref('players/' + playerId);
-        const playersRef = db.ref('players');
+        const playerRef = db.ref('players3d/' + playerId);
+        const playersRef = db.ref('players3d');
 
-        // Data Checkpoint Umrah
-        const checkpoints = [
-            { id: 'miqat', name: "1. Miqat", x: 100, y: 500, radius: 45, color: "#8e44ad", info: "Miqat ialah sempadan tempat atau masa yang ditetapkan untuk berniat ihram Umrah." },
-            { id: 'tawaf', name: "2. Tawaf (Kaabah)", x: 350, y: 300, radius: 95, color: "#2c3e50", info: "Mengelilingi Kaabah sebanyak 7 pusingan mengikut lawan jam bermula dari Hajarul Aswad." },
-            { id: 'sai', name: "3. Sa'i (Safa & Marwah)", x: 700, y: 300, radius: 55, color: "#d35400", info: "Berjalan ulang-alik sebanyak 7 kali antara Bukit Safa dan Bukit Marwah." },
-            { id: 'tahallul', name: "4. Tahallul", x: 850, y: 150, radius: 45, color: "#27ae60", info: "Bercukur atau menggunting sekurang-kurangnya 3 helai rambut sebagai penutup ihram." },
-            { id: 'safwa', name: "5. Safwa Tower", x: 850, y: 500, radius: 55, color: "#f39c12", info: "Lokasi terakhir untuk menduduki kuiz kefahaman Umrah bersama pemain lain." }
-        ];
+        // --- 2. THREE.JS 3D SCENE SETUP ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a233a); // Warna langit malam/fajar
+        scene.fog = new THREE.FogExp2(0x1a233a, 0.005);
 
-        let localPlayer = {
-            x: 100 + Math.random() * 40,
-            y: 520 + Math.random() * 30,
-            speed: 4,
-            gender: Math.random() > 0.5 ? 'male' : 'female',
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // Kawalan Kamera
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 - 0.05; // Elak kamera jatuh bawah tanah
+
+        // --- 3. PENCAHAYAAN (LIGHTING) ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfffaed, 0.8);
+        dirLight.position.set(50, 80, 50);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        // --- 4. BINAAN PERSEKITARAN 3D (MASJIDIL HARAM, KAABAH, SAFA/MARWA) ---
+        
+        // Dataran Masjidil Haram (Lantai Marmar)
+        const floorGeo = new THREE.PlaneGeometry(250, 250);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0xf0ebd8, roughness: 0.2 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Kaabah 3D
+        const kaabaGroup = new THREE.Group();
+        const kaabaGeo = new THREE.BoxGeometry(16, 20, 16);
+        const kaabaMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
+        const kaabaMesh = new THREE.Mesh(kaabaGeo, kaabaMat);
+        kaabaMesh.position.y = 10;
+        kaabaMesh.castShadow = true;
+        kaabaMesh.receiveShadow = true;
+        kaabaGroup.add(kaabaMesh);
+
+        // Jalur Emas Kiswah Kaabah
+        const goldGeo = new THREE.BoxGeometry(16.2, 2, 16.2);
+        const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.2 });
+        const goldMesh = new THREE.Mesh(goldGeo, goldMat);
+        goldMesh.position.y = 14;
+        kaabaGroup.add(goldMesh);
+        scene.add(kaabaGroup);
+
+        // Bangunan Safa & Marwah 3D (Laluan Sa'i)
+        const saiGeo = new THREE.BoxGeometry(20, 8, 120);
+        const saiMat = new THREE.MeshStandardMaterial({ color: 0xe0c9a6, transparent: true, opacity: 0.7 });
+        const saiBuilding = new THREE.Mesh(saiGeo, saiMat);
+        saiBuilding.position.set(80, 4, 0);
+        saiBuilding.receiveShadow = true;
+        scene.add(saiBuilding);
+
+        // Bukit Safa (Merah/Coklat) & Bukit Marwah
+        const hillGeo = new THREE.ConeGeometry(8, 6, 8);
+        const hillMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
+        const safaHill = new THREE.Mesh(hillGeo, hillMat);
+        safaHill.position.set(80, 3, -50);
+        scene.add(safaHill);
+
+        const marwahHill = new THREE.Mesh(hillGeo, hillMat);
+        marwahHill.position.set(80, 3, 50);
+        scene.add(marwahHill);
+
+        // Safwa Tower (Bangunan Menara Jam 3D)
+        const towerGeo = new THREE.CylinderGeometry(8, 10, 60, 8);
+        const towerMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a });
+        const safwaTower = new THREE.Mesh(towerGeo, towerMat);
+        safwaTower.position.set(-80, 30, -80);
+        safwaTower.castShadow = true;
+        scene.add(safwaTower);
+
+        // --- 5. CIPTA WATAK AVATAR 3D (IHRAM LELAKI / JUBAH PEREMPUAN) ---
+        function createAvatarMesh(gender) {
+            const avatarGroup = new THREE.Group();
+
+            // Badan (Pakaian)
+            const bodyGeo = new THREE.CylinderGeometry(0.6, 0.8, 2.2, 16);
+            // Lelaki: Ihram Putih, Perempuan: Jubah/Telekung Hitam/Kelabu Dark
+            const bodyMat = new THREE.MeshStandardMaterial({ 
+                color: gender === 'male' ? 0xffffff : 0x222222, 
+                roughness: 0.8 
+            });
+            const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+            bodyMesh.position.y = 1.1;
+            bodyMesh.castShadow = true;
+            avatarGroup.add(bodyMesh);
+
+            // Kepala
+            const headGeo = new THREE.SphereGeometry(0.45, 16, 16);
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xffcc99 });
+            const headMesh = new THREE.Mesh(headGeo, headMat);
+            headMesh.position.y = 2.5;
+            headMesh.castShadow = true;
+            avatarGroup.add(headMesh);
+
+            // Indicator Cincin Cahaya Bawah Tapak
+            const ringGeo = new THREE.RingGeometry(0.8, 1.0, 16);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, side: THREE.DoubleSide });
+            const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+            ringMesh.rotation.x = -Math.PI / 2;
+            ringMesh.position.y = 0.05;
+            avatarGroup.add(ringMesh);
+
+            return avatarGroup;
+        }
+
+        // Avatar Local
+        const localGender = Math.random() > 0.5 ? 'male' : 'female';
+        const localAvatar = createAvatarMesh(localGender);
+        localAvatar.position.set(0, 0, 40);
+        scene.add(localAvatar);
+
+        let localData = {
+            x: 0,
+            z: 40,
+            gender: localGender,
             tawafCount: 0
         };
 
-        let remotePlayers = {};
-        let keys = {};
-        let activeCheckpoint = null;
+        const remoteAvatars = {};
 
-        // Daftar Pemain ke Firebase & Padam Bila Keluar
-        playerRef.set({
-            x: localPlayer.x,
-            y: localPlayer.y,
-            gender: localPlayer.gender,
-            updatedAt: Date.now()
-        });
+        // --- 6. MULTIPLAYER NETWORKING (FIREBASE) ---
+        playerRef.set({ x: localData.x, z: localData.z, gender: localData.gender });
         playerRef.onDisconnect().remove();
 
-        // Kemaskini Lokasi Pemain Lain secara Real-time
         playersRef.on('value', (snapshot) => {
             const data = snapshot.val() || {};
-            remotePlayers = {};
             let count = 0;
 
             for (let id in data) {
                 count++;
                 if (id !== playerId) {
-                    remotePlayers[id] = data[id];
+                    if (!remoteAvatars[id]) {
+                        // Cipta avatar 3D untuk pemain baharu yang masuk
+                        const newAvatar = createAvatarMesh(data[id].gender);
+                        scene.add(newAvatar);
+                        remoteAvatars[id] = newAvatar;
+                    }
+                    // Kemaskini kedudukan pemain lain
+                    remoteAvatars[id].position.x = data[id].x;
+                    remoteAvatars[id].position.z = data[id].z;
+                }
+            }
+
+            // Padam avatar pemain yang keluar
+            for (let id in remoteAvatars) {
+                if (!data[id]) {
+                    scene.remove(remoteAvatars[id]);
+                    delete remoteAvatars[id];
                 }
             }
             document.getElementById('player-count').innerText = count;
         });
 
-        // Kawalan Papan Kekunci
+        // --- 7. KAWALAN PERGERAKAN & CHECKPOINT DETECTOR ---
+        const keys = {};
         window.addEventListener('keydown', e => keys[e.key] = true);
         window.addEventListener('keyup', e => keys[e.key] = false);
 
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        const checkpoints = [
+            { id: 'tawaf', name: "Tawaf (Kaabah 3D)", x: 0, z: 0, radius: 25, info: "Mengelilingi Kaabah sebanyak 7 pusingan mengikut lawan jam." },
+            { id: 'sai', name: "Sa'i (Safa & Marwah)", x: 80, z: 0, radius: 30, info: "Berjalan ulang-alik antara Bukit Safa dan Bukit Marwah." },
+            { id: 'safwa', name: "Safwa Tower", x: -80, z: -80, radius: 25, info: "Bilik kuiz dan rumusan pembelajaran ibadah Umrah." }
+        ];
 
-        function update() {
+        let activeCP = null;
+
+        function updateMovement() {
+            let speed = 0.6;
             let moved = false;
-            if (keys['w'] || keys['W'] || keys['ArrowUp']) { localPlayer.y -= localPlayer.speed; moved = true; }
-            if (keys['s'] || keys['S'] || keys['ArrowDown']) { localPlayer.y += localPlayer.speed; moved = true; }
-            if (keys['a'] || keys['A'] || keys['ArrowLeft']) { localPlayer.x -= localPlayer.speed; moved = true; }
-            if (keys['d'] || keys['D'] || keys['ArrowRight']) { localPlayer.x += localPlayer.speed; moved = true; }
 
-            // Hadkan Pergerakan Dalam Peta
-            localPlayer.x = Math.max(15, Math.min(canvas.width - 15, localPlayer.x));
-            localPlayer.y = Math.max(15, Math.min(canvas.height - 15, localPlayer.y));
+            if (keys['w'] || keys['W'] || keys['ArrowUp']) { localData.z -= speed; moved = true; }
+            if (keys['s'] || keys['S'] || keys['ArrowDown']) { localData.z += speed; moved = true; }
+            if (keys['a'] || keys['A'] || keys['ArrowLeft']) { localData.x -= speed; moved = true; }
+            if (keys['d'] || keys['D'] || keys['ArrowRight']) { localData.x += speed; moved = true; }
 
-            // Hantar Lokasi Baru ke Firebase
             if (moved) {
-                playerRef.update({
-                    x: localPlayer.x,
-                    y: localPlayer.y,
-                    updatedAt: Date.now()
-                });
+                localAvatar.position.x = localData.x;
+                localAvatar.position.z = localData.z;
+
+                // Kamera sentiasa mengekori avatar
+                camera.position.set(localData.x, localData.y + 20, localData.z + 30);
+                controls.target.set(localData.x, 0, localData.z);
+
+                // Kemaskini lokasi ke Firebase
+                playerRef.update({ x: localData.x, z: localData.z });
             }
 
-            checkCheckpoints();
-        }
-
-        function checkCheckpoints() {
-            activeCheckpoint = null;
+            // Semak Checkpoint
+            activeCP = null;
             for (let cp of checkpoints) {
-                let dist = Math.hypot(localPlayer.x - cp.x, localPlayer.y - cp.y);
+                let dist = Math.hypot(localData.x - cp.x, localData.z - cp.z);
                 if (dist < cp.radius) {
-                    activeCheckpoint = cp;
+                    activeCP = cp;
                     break;
                 }
             }
 
             const prompt = document.getElementById('action-prompt');
-            if (activeCheckpoint) {
+            if (activeCP) {
                 prompt.style.display = 'flex';
-                document.getElementById('current-cp').innerText = activeCheckpoint.name;
+                document.getElementById('current-cp').innerText = activeCP.name;
             } else {
                 prompt.style.display = 'none';
-                document.getElementById('current-cp').innerText = "Tiada";
+                document.getElementById('current-cp').innerText = "Dataran Masjid";
             }
         }
 
-        function drawAvatar(x, y, gender, isLocal = false) {
-            // Aura Pemain
-            ctx.beginPath();
-            ctx.arc(x, y, 13, 0, Math.PI * 2);
-            ctx.fillStyle = isLocal ? "#00ffcc" : "rgba(255,255,255,0.3)";
-            ctx.fill();
-
-            // Pakaian Avatar (Ihram Putih / Jubah Telekung)
-            ctx.beginPath();
-            ctx.arc(x, y, 10, 0, Math.PI * 2);
-            ctx.fillStyle = gender === 'male' ? '#ffffff' : '#222222';
-            ctx.fill();
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = '#000';
-            ctx.stroke();
-
-            // Kepala
-            ctx.beginPath();
-            ctx.arc(x, y - 2, 5, 0, Math.PI * 2);
-            ctx.fillStyle = '#ffcc99';
-            ctx.fill();
+        // --- 8. GAME LOOP & RENDER ---
+        function animate() {
+            requestAnimationFrame(animate);
+            updateMovement();
+            controls.update();
+            
+            // Putaran perlahan Kaabah untuk efek visual
+            goldMesh.rotation.y += 0.002;
+            
+            renderer.render(scene, camera);
         }
 
-        function render() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Resize Window
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
 
-            // Lukis Checkpoints
-            checkpoints.forEach(cp => {
-                ctx.beginPath();
-                ctx.arc(cp.x, cp.y, cp.radius, 0, Math.PI * 2);
-                ctx.fillStyle = cp.color + "22";
-                ctx.fill();
-                ctx.strokeStyle = cp.color;
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                ctx.fillStyle = "#111";
-                ctx.font = "bold 12px Arial";
-                ctx.fillText(cp.name, cp.x - 35, cp.y - cp.radius - 8);
-            });
-
-            // Model Kaabah 3D Ringkas
-            ctx.fillStyle = "#000000";
-            ctx.fillRect(325, 275, 50, 50);
-            ctx.strokeStyle = "#d4af37";
-            ctx.lineWidth = 3;
-            ctx.strokeRect(325, 275, 50, 50);
-
-            // Lukis Pemain-Pemain Lain
-            for (let id in remotePlayers) {
-                let p = remotePlayers[id];
-                drawAvatar(p.x, p.y, p.gender, false);
-            }
-
-            // Lukis Pemain Sendiri
-            drawAvatar(localPlayer.x, localPlayer.y, localPlayer.gender, true);
-        }
-
-        function gameLoop() {
-            update();
-            render();
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Fungsi Modal UI
+        // --- 9. INTERAKSI UI / MODAL ---
         function openInfoModal() {
-            if (!activeCheckpoint) return;
-            document.getElementById('modal-title').innerText = activeCheckpoint.name;
-            document.getElementById('modal-desc').innerText = activeCheckpoint.info;
+            if (!activeCP) return;
+            document.getElementById('modal-title').innerText = activeCP.name;
+            document.getElementById('modal-desc').innerText = activeCP.info;
             document.getElementById('infoModal').style.display = 'block';
         }
 
@@ -256,35 +337,32 @@
         }
 
         function triggerSimulation() {
-            if (!activeCheckpoint) return;
+            if (!activeCP) return;
 
-            if (activeCheckpoint.id === 'tawaf') {
-                if (localPlayer.tawafCount < 7) {
-                    localPlayer.tawafCount++;
-                    document.getElementById('tawaf-count').innerText = localPlayer.tawafCount;
-                    alert(`Simulasi Tawaf: Pusingan ke-${localPlayer.tawafCount} selesai!`);
+            if (activeCP.id === 'tawaf') {
+                if (localData.tawafCount < 7) {
+                    localData.tawafCount++;
+                    document.getElementById('tawaf-count').innerText = localData.tawafCount;
+                    alert(`Simulasi 3D Tawaf: Pusingan ke-${localData.tawafCount} selesai!`);
                 } else {
-                    alert("Selesai 7 pusingan Tawaf! Sila teruskan ke Sa'i.");
+                    alert("Selesai 7 pusingan Tawaf! Sila bergerak ke kawasan Sa'i (Safa & Marwah).");
                 }
-            } else if (activeCheckpoint.id === 'safwa') {
+            } else if (activeCP.id === 'safwa') {
                 startQuiz();
             } else {
-                alert(`Simulasi untuk ${activeCheckpoint.name} dimulakan!`);
+                alert(`Simulasi 3D untuk ${activeCP.name} dimulakan!`);
             }
         }
 
-        // Soalan Kuiz Safwa Tower
+        // Kuiz
         const quizQuestions = [
-            { q: "Berapakah pusingan Tawaf yang wajib dilakukan?", a: ["5 Pusingan", "7 Pusingan", "3 Pusingan"], correct: 1 },
-            { q: "Sa'i bermula dari bukit apa dan berakhir di bukit apa?", a: ["Safa ke Marwah", "Marwah ke Safa", "Mina ke Arafah"], correct: 0 },
-            { q: "Apakah maksud Tahallul dalam ibadah Umrah?", a: ["Niat Umrah", "Bercukur/Menggunting rambut", "Berlari kecil"], correct: 1 }
+            { q: "Berapakah pusingan Tawaf yang wajib dilakukan di Kaabah?", a: ["5 Pusingan", "7 Pusingan", "3 Pusingan"], correct: 1 },
+            { q: "Apakah pakaian ihram bagi lelaki?", a: ["Jubah Hitam", "2 Helaian Kain Putih Tanpa Jahitan", "Baju Melayu"], correct: 1 }
         ];
-        let currentQ = 0;
-        let score = 0;
+        let currentQ = 0, score = 0;
 
         function startQuiz() {
-            currentQ = 0;
-            score = 0;
+            currentQ = 0; score = 0;
             showQuestion();
             document.getElementById('quizModal').style.display = 'block';
         }
@@ -301,25 +379,21 @@
                 btn.style.width = '100%';
                 btn.style.margin = '5px 0';
                 btn.innerText = opt;
-                btn.onclick = () => answerQuiz(idx);
+                btn.onclick = () => {
+                    if (idx === q.correct) score += 50;
+                    currentQ++;
+                    if (currentQ < quizQuestions.length) showQuestion();
+                    else {
+                        alert(`Tahniah! Kuiz Tamat. Skor anda: ${score}/100`);
+                        closeModal('quizModal');
+                    }
+                };
                 optionsDiv.appendChild(btn);
             });
         }
 
-        function answerQuiz(idx) {
-            if (idx === quizQuestions[currentQ].correct) score += 33.3;
-            currentQ++;
-
-            if (currentQ < quizQuestions.length) {
-                showQuestion();
-            } else {
-                alert(`Kuiz Tamat! Skor akhir anda: ${Math.round(score)}/100`);
-                closeModal('quizModal');
-            }
-        }
-
-        // Mula Permainan
-        gameLoop();
+        // Mulakan Permainan 3D
+        animate();
     </script>
 </body>
 </html>
