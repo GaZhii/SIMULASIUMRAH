@@ -1,609 +1,325 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Jejak Sirah — Maze Runner Pendidikan Islam</title>
-<style>
-:root {
-  color-scheme: light dark;
-  --bg: light-dark(#f3f7f1,#111a20);
-  --panel: light-dark(#fff,#1c292f);
-  --ink: light-dark(#17372f,#edf7ef);
-  --muted: light-dark(#5e756d,#a7bdb4);
-  --line: light-dark(#d9e7dc,#354a49);
-  --green: light-dark(#177c5b,#51d6a1);
-  --gold: light-dark(#e6b94e,#f3cc68);
-  --maze: light-dark(#d8e9df,#2a403c);
-  --wall: light-dark(#1d5144,#74ad91);
-  --pink: light-dark(#ffe3d7,#56372f);
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--ink);
-  font-family: ui-rounded, 'Trebuchet MS', system-ui, sans-serif;
-}
-button { font: inherit; cursor: pointer; }
-#app { min-height: 100vh; padding: clamp(14px,3vw,32px); }
-.wrap { max-width: 1180px; margin: auto; }
-.top {
-  display: flex; justify-content: space-between; align-items: center;
-  gap: 12px; flex-wrap: wrap; margin-bottom: 24px;
-}
-.brand { display: flex; gap: 12px; align-items: center; }
-.logo {
-  width: 48px; height: 48px; display: grid; place-items: center;
-  background: var(--green); color: #062e22; border-radius: 16px;
-  font-size: 25px; box-shadow: 0 5px 0 #0b5a41;
-}
-.eyebrow {
-  font-size: 11px; letter-spacing: 2px; font-weight: 900;
-  color: var(--green); text-transform: uppercase;
-}
-.brand h1 { font-size: clamp(22px,3vw,34px); margin: 2px 0 0; }
-.pill {
-  border: 1px solid var(--line); padding: 9px 13px;
-  border-radius: 99px; color: var(--muted); font-size: 13px;
-  font-weight: 800;
-}
-.hero { display: none !important; }
-.intro,.stats,.mapbox,.sidebox {
-  background: var(--panel); border: 1px solid var(--line);
-  border-radius: 24px; padding: 22px;
-  box-shadow: 0 10px 28px #102d2010;
-}
-.layout { display: block !important; }
-.mapbox { max-width: 920px; margin: 0 auto; padding: clamp(12px,2.5vw,24px); }
-.sectionhead {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; margin-bottom: 14px;
-}
-.sectionhead h3 { margin: 0; font-size: 20px; }
-.hint { font-size: 12px; color: var(--muted); }
-.map {
-  position: relative; width: 100%; aspect-ratio: 1.05/1;
-  max-height: min(68vh,700px); min-height: 340px;
-  border-radius: 17px; background-color: var(--maze);
-  overflow: hidden; border: 2px solid var(--line); touch-action: pan-y;
-}
-.map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.tile { fill: var(--wall); stroke: light-dark(#184b3d,#17352d); stroke-width: 1.5; }
-.pathline {
-  fill: none; stroke: light-dark(#b4d9c2,#385d4e);
-  stroke-width: 22; stroke-linecap: round; stroke-linejoin: round;
-}
-.checkpoint { cursor: pointer; outline: none; }
-.checkpoint circle {
-  fill: var(--gold); stroke: light-dark(#fff9dc,#293a30);
-  stroke-width: 3; filter: drop-shadow(0 3px 2px #102d2040);
-}
-.checkpoint.locked { opacity: .68; }
-.checkpoint.locked circle { fill: light-dark(#9aa9a1,#52655e); }
-.checkpoint.done circle { fill: var(--green); }
-.checkpoint.near circle { stroke: var(--green); stroke-width: 5; }
-.checkpoint text {
-  font-size: 8px; fill: #18382d; font-weight: 900;
-  text-anchor: middle; dominant-baseline: middle; pointer-events: none;
-}
-.player {
-  position: absolute; width: 37px; height: 37px;
-  border-radius: 13px; background: var(--panel);
-  border: 3px solid var(--green); box-shadow: 0 4px 0 #0c6749;
-  display: grid; place-items: center; font-size: 23px; z-index: 5;
-  transform: translate(-50%,-50%);
-  transition: left .18s,top .18s; pointer-events: none;
-}
-.maplegend {
-  display: flex; flex-wrap: wrap; gap: 12px; padding: 13px 2px 0;
-  font-size: 12px; color: var(--muted);
-}
-.legenddot {
-  display: inline-block; width: 10px; height: 10px;
-  border-radius: 50%; margin-right: 5px; background: var(--gold);
-}
-.controls {
-  display: grid; grid-template-columns: repeat(3,1fr); gap: 7px;
-  max-width: 230px; margin: 14px auto 4px;
-}
-.controls button {
-  height: 54px; min-height: 54px; border: 1px solid var(--line);
-  border-radius: 12px; background: var(--panel); color: var(--ink);
-  font-size: 20px; font-weight: 900; user-select: none;
-  -webkit-user-select: none; -webkit-touch-callout: none;
-  touch-action: none;
-}
-.controls .empty { visibility: hidden; }
-.smallnote { text-align: center; font-size: 11px !important; }
-.maze-tip {
-  display: flex; justify-content: space-between; gap: 10px;
-  flex-wrap: wrap; margin: 12px 2px 0;
-  color: var(--muted); font-size: 12px;
-}
-.sidebox { padding: 20px; }
-.sidebox h3 { margin: 0 0 5px; font-size: 21px; }
-.sidebox p { color: var(--muted); line-height: 1.55; font-size: 14px; }
-#panel {
-  display: none; position: fixed; z-index: 1001;
-  left: 50%; top: 50%; transform: translate(-50%,-50%);
-  width: min(92vw,580px); max-height: 86vh; overflow: auto;
-  box-shadow: 0 25px 100px #0008; border-radius: 24px;
-}
-#panel.open { display: block; }
-body.modal-open:after {
-  content: ""; position: fixed; inset: 0; background: #071a15b8;
-  backdrop-filter: blur(5px); z-index: 1000;
-}
-.modal-top {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; margin-bottom: 10px;
-}
-.close-modal {
-  border: 1px solid var(--line); border-radius: 50%;
-  width: 38px; height: 38px; background: var(--panel);
-  color: var(--ink); font-size: 22px; flex: 0 0 auto;
-}
-.checkpoint-card {
-  border: 1px solid var(--line); border-radius: 17px;
-  padding: 15px; margin: 15px 0;
-  background: light-dark(#f7faf7,#172522);
-}
-.tag {
-  display: inline-block; border-radius: 99px;
-  background: light-dark(#dff3e6,#214d3c); color: var(--green);
-  font-weight: 900; font-size: 11px; padding: 6px 9px;
-}
-.story { line-height: 1.72; font-size: 14px; color: var(--ink); }
-.story strong { color: var(--green); }
-.btn {
-  border: 0; border-radius: 13px; padding: 12px 15px;
-  font-weight: 900; background: var(--green); color: #062c21;
-  box-shadow: 0 4px 0 light-dark(#0b6347,#256b50);
-}
-.btn:disabled { opacity: .4; cursor: not-allowed; }
-.full { width: 100%; }
-.quiz { display: none; }
-.quiz.active { display: block; }
-.qcount { font-size: 12px; color: var(--muted); font-weight: 900; margin-top: 16px; }
-.question { font-weight: 900; line-height: 1.45; margin: 10px 0 12px; }
-.answers { display: grid; gap: 8px; }
-.answer {
-  border: 1px solid var(--line); background: var(--panel);
-  color: var(--ink); text-align: left; padding: 12px;
-  border-radius: 12px; font-size: 13px; line-height: 1.45;
-}
-.answer.correct { border-color: var(--green); background: light-dark(#e3f7e9,#173d30); }
-.answer.wrong { border-color: #e1846c; background: var(--pink); }
-.feedback { font-size: 13px; font-weight: 800; min-height: 20px; margin: 10px 0; }
-.toast {
-  margin-top: 12px; padding: 12px; border-radius: 12px;
-  background: light-dark(#e1f6e7,#173c2e); color: var(--green);
-  font-size: 13px; font-weight: 800; display: none;
-}
-.footer { text-align: center; color: var(--muted); font-size: 11px; padding: 22px 0 4px; }
-.modalhint { font-size: 12px; color: var(--muted); }
-@media(max-width:600px) {
-  .map { min-height: 360px; aspect-ratio: .88/1; }
-  .mapbox { padding: 12px; }
-  .sectionhead h3 { font-size: 18px; }
-  #panel { padding: 17px; max-height: 90vh; }
-  .checkpoint-card { padding: 12px; }
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Labbaik: The Sacred Journey (Simulasi Umrah 2D)</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #111; color: #fff; text-align: center; overflow: hidden; }
+        h1 { color: #d4af37; margin-top: 10px; font-size: 24px; }
+        p.sub { color: #aaa; font-size: 14px; margin-bottom: 10px; }
+        
+        #game-container { position: relative; width: 1000px; height: 600px; margin: 0 auto; border: 3px solid #d4af37; border-radius: 8px; box-shadow: 0 0 20px rgba(212, 175, 55, 0.2); }
+        canvas { background-color: #e6d7b8; display: block; border-radius: 5px; }
+        
+        /* Modal & UI Elements */
+        .modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                 background: #222; border: 2px solid #d4af37; padding: 20px; border-radius: 10px; width: 420px; z-index: 100; box-shadow: 0 0 25px rgba(0,0,0,0.9); }
+        .modal h2 { color: #d4af37; margin-bottom: 10px; font-size: 20px; }
+        .modal p { color: #ddd; font-size: 14px; margin-bottom: 15px; line-height: 1.5; text-align: left; }
+        .btn { background: #d4af37; color: #000; border: none; padding: 10px 18px; font-weight: bold; cursor: pointer; border-radius: 5px; margin: 5px; transition: 0.2s; }
+        .btn:hover { background: #f3cf65; transform: scale(1.03); }
+        
+        #hud { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.75); padding: 12px; border-radius: 6px; text-align: left; font-size: 13px; color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.4); pointer-events: none; }
+        #hud div { margin-bottom: 4px; }
+        #action-prompt { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: none; gap: 10px; }
+    </style>
+
+    <!-- Firebase Realtime Database SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
-<main id="app">
-<div class="wrap">
-<header class="top">
-  <div class="brand">
-    <div class="logo">☾</div>
-    <div>
-      <div class="eyebrow">Pendidikan Islam · Tingkatan 2</div>
-      <h1>JEJAK SIRAH</h1>
+
+    <h1>Labbaik: The Sacred Journey</h1>
+    <p class="sub">Gunakan kekunci <b>W, A, S, D</b> atau <b>Anak Panah</b> untuk bergerak ke checkpoint.</p>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="1000" height="600"></canvas>
+        
+        <div id="hud">
+            <div><b>ID Pemain:</b> <span id="player-id">Menyambung...</span></div>
+            <div><b>Pemain Aktif:</b> <span id="player-count">1</span>/30</div>
+            <div><b>Checkpoint Semasa:</b> <span id="current-cp">Tiada</span></div>
+            <div><b>Pusingan Tawaf:</b> <span id="tawaf-count">0</span>/7</div>
+        </div>
+
+        <div id="action-prompt">
+            <button class="btn" onclick="openInfoModal()">Info Checkpoint</button>
+            <button class="btn" onclick="triggerSimulation()">Mula Simulasi</button>
+        </div>
+
+        <!-- Modal Info -->
+        <div id="infoModal" class="modal">
+            <h2 id="modal-title">Info Checkpoint</h2>
+            <p id="modal-desc">Maklumat berkaitan checkpoint...</p>
+            <button class="btn" onclick="closeModal('infoModal')">Tutup</button>
+        </div>
+
+        <!-- Modal Kuiz Safwa Tower -->
+        <div id="quizModal" class="modal">
+            <h2>Kuiz Safwa Tower</h2>
+            <p id="quiz-question">Soalan Kuiz...</p>
+            <div id="quiz-options"></div>
+        </div>
     </div>
-  </div>
-  <div class="pill">🧭 MAZE RUNNER · MOD PEMBELAJARAN</div>
-</header>
 
-<div class="layout">
-<section class="mapbox">
-  <div class="sectionhead">
-    <h3>🗺️ Peta pengembaraan</h3>
-    <span class="hint">Tekan bulatan checkpoint</span>
-  </div>
-  <div class="map" id="map">
-    <svg viewBox="0 0 500 520" preserveAspectRatio="none" aria-label="Peta maze">
-      <defs>
-        <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
-          <circle cx="2" cy="2" r="1" fill="light-dark(#aac9b5,#39594d)"/>
-        </pattern>
-      </defs>
-      <rect width="500" height="520" fill="url(#dots)"/>
-      <path class="pathline" d="M60 455 L60 360 L150 360 L150 275 L250 275 L250 180 L350 180 L350 90 L440 90"/>
-      <path class="pathline" d="M150 360 L250 420 L355 420 L355 330 L430 330" opacity=".65"/>
-      <g id="walls"></g>
-      <g id="nodes"></g>
-    </svg>
-    <div class="player" id="player" style="left:12%;top:87%">🧑‍🎓</div>
-  </div>
-  <div class="maplegend">
-    <span><i class="legenddot"></i>Checkpoint aktif</span>
-    <span>🟢 Selesai</span>
-    <span>🔒 Belum dibuka</span>
-  </div>
-  <div class="controls">
-    <span class="empty"></span>
-    <button data-move="up" aria-label="Gerak ke atas">↑</button>
-    <span class="empty"></span>
-    <button data-move="left" aria-label="Gerak ke kiri">←</button>
-    <button data-move="down" aria-label="Gerak ke bawah">↓</button>
-    <button data-move="right" aria-label="Gerak ke kanan">→</button>
-  </div>
-  <p class="smallnote">Sentuh butang arah. Tekan dan tahan untuk bergerak berterusan.</p>
-  <p id="nearHint" class="maze-tip">Gerakkan figura ke checkpoint pertama, kemudian tekan bulatannya.</p>
-</section>
+    <script>
+        // 1. Tetapan Demo Firebase (Gunakan pengkalan data awam terbuka)
+        const firebaseConfig = {
+            databaseURL: "https://labbaik-umrah-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
+        
+        // Semak/Inisialisasi Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+        
+        // Jana ID unik pemain
+        const playerId = "p_" + Math.random().toString(36).substr(2, 6);
+        document.getElementById('player-id').innerText = playerId;
 
-<aside class="sidebox" id="panel">
-  <div class="modal-top">
-    <div>
-      <div class="eyebrow">Checkpoint ditemukan</div>
-      <span class="hint">Baca nota sebelum menjawab kuiz</span>
-    </div>
-    <button class="close-modal" id="closeModal" aria-label="Tutup pop-up">×</button>
-  </div>
-  <div>
-    <div class="eyebrow">Lokasi semasa</div>
-    <h3 id="cpTitle">01 · Permulaan Misi</h3>
-    <p id="cpSubtitle">Sedia untuk meneroka.</p>
-    <div class="checkpoint-card">
-      <span class="tag" id="cpTag">CHECKPOINT 01</span>
-      <div class="story" id="story"></div>
-    </div>
-    <div id="quizStart">
-      <button class="btn full" id="readBtn">📖 Saya sudah baca — mula kuiz</button>
-      <p class="modalhint">Jawab ketiga-tiga soalan dengan betul untuk melengkapkan checkpoint.</p>
-    </div>
-    <div class="quiz" id="quiz">
-      <div class="qcount" id="qcount">SOALAN 1 DARIPADA 3</div>
-      <div class="question" id="question"></div>
-      <div class="answers" id="answers"></div>
-      <div class="feedback" id="feedback" aria-live="polite"></div>
-      <button class="btn full" id="nextBtn" style="display:none">Soalan seterusnya →</button>
-      <button class="btn full" id="finishBtn" style="display:none">Buka checkpoint seterusnya ✨</button>
-    </div>
-    <div class="toast" id="toast"></div>
-  </div>
-</aside>
-</div>
-<div class="footer">JEJAK SIRAH · Belajar sambil meneroka · Kandungan sirah diringkaskan untuk aktiviti ulang kaji Pendidikan Islam Tingkatan 2.</div>
-</div>
-</main>
+        const playerRef = db.ref('players/' + playerId);
+        const playersRef = db.ref('players');
 
-<script>
-const stages = [
-{
-title:'Hijrah ke Madinah', sub:'Perancangan, tawakal dan pengorbanan',
-tag:'CHECKPOINT 01', x:60, y:455,
-story:'<p>Rasulullah SAW dan para sahabat berhijrah dari Makkah ke Madinah untuk menjaga akidah dan membina masyarakat Islam. Baginda merancang perjalanan dengan teliti. Hijrah mengajar bahawa <strong>tawakal perlu disertai usaha dan perancangan</strong>.</p>',
-qs:[
-['Apakah tujuan utama hijrah Rasulullah SAW ke Madinah?',['Untuk mencari kekayaan','Untuk menyelamatkan akidah dan membina masyarakat Islam','Untuk melancong'],1,'Hijrah membolehkan umat Islam beribadah dengan lebih aman.'],
-['Apakah pengajaran daripada perancangan hijrah?',['Tawakal mesti disertai usaha','Tidak perlu meminta bantuan','Semua perkara dibuat tergesa-gesa'],0,'Perancangan rapi ialah sebahagian daripada ikhtiar.'],
-['Siapakah rasul yang memimpin hijrah ke Madinah?',['Nabi Musa AS','Nabi Ibrahim AS','Nabi Muhammad SAW'],2,'Rasulullah SAW memimpin hijrah ke Madinah.']
-]
-},
-{
-title:'Membina masyarakat Madinah', sub:'Persaudaraan dan hidup bersama',
-tag:'CHECKPOINT 02', x:60, y:360,
-story:'<p>Rasulullah SAW mempersaudarakan golongan Muhajirin dengan Ansar dan membina masjid sebagai pusat ibadah serta masyarakat. Langkah ini memperkukuh <strong>ukhuwah, kerjasama dan tanggungjawab bersama</strong>.</p>',
-qs:[
-['Siapakah golongan Ansar?',['Penduduk Madinah yang membantu umat Islam yang berhijrah','Penduduk Rom','Pedagang dari Parsi'],0,'Ansar ialah penduduk Madinah yang membantu Muhajirin.'],
-['Apakah tujuan mempersaudarakan Muhajirin dan Ansar?',['Mengadakan pertandingan','Mengukuhkan persaudaraan dan saling membantu','Memisahkan masyarakat'],1,'Persaudaraan menguatkan perpaduan umat Islam.'],
-['Apakah peranan masjid pada zaman Rasulullah SAW di Madinah?',['Tempat menyimpan barang sahaja','Tempat berniaga sahaja','Pusat ibadah dan kegiatan masyarakat'],2,'Masjid menjadi pusat ibadah, ilmu dan urusan masyarakat.']
-]
-},
-{
-title:'Perang Badar', sub:'Keimanan dan persediaan',
-tag:'CHECKPOINT 03', x:150, y:360,
-story:'<p>Perang Badar berlaku pada tahun 2 Hijrah antara umat Islam dengan tentera Quraisy Makkah. Peristiwa ini mengingatkan kita bahawa <strong>kemenangan bukan bergantung pada bilangan semata-mata</strong>.</p>',
-qs:[
-['Bilakah Perang Badar berlaku?',['Tahun 2 Hijrah','Tahun 10 Hijrah','Sebelum kerasulan'],0,'Perang Badar berlaku pada tahun kedua Hijrah.'],
-['Siapakah pihak yang menentang umat Islam dalam Perang Badar?',['Tentera Rom sahaja','Tentera Quraisy Makkah','Penduduk Habsyah'],1,'Tentera Quraisy Makkah memerangi umat Islam di Badar.'],
-['Apakah pengajaran utama daripada Perang Badar?',['Bilangan besar menjamin kemenangan','Persediaan tidak penting','Keimanan, disiplin dan pertolongan Allah sangat penting'],2,'Keimanan dan usaha penting, di samping pertolongan Allah.']
-]
-},
-{
-title:'Perang Uhud', sub:'Disiplin dan patuh arahan',
-tag:'CHECKPOINT 04', x:250, y:275,
-story:'<p>Dalam Perang Uhud pada tahun 3 Hijrah, Rasulullah SAW mengarahkan pasukan pemanah supaya kekal di posisi mereka. Peristiwa ini mengajar bahawa <strong>disiplin dan mematuhi arahan yang benar amat penting</strong>.</p>',
-qs:[
-['Apakah arahan Rasulullah SAW kepada pasukan pemanah di Uhud?',['Meninggalkan bukit seawal mungkin','Kekal di posisi yang ditetapkan','Berpencar tanpa arahan'],1,'Pasukan pemanah diarahkan kekal di posisi mereka.'],
-['Apakah kesilapan sebahagian pemanah?',['Meninggalkan posisi sebelum diarahkan','Tidak membawa makanan','Tidak mengenali Madinah'],0,'Mereka meninggalkan posisi kerana menyangka perang telah selesai.'],
-['Apakah pengajaran daripada Perang Uhud?',['Arahan boleh diabaikan','Kemenangan sentiasa mudah','Disiplin dan ketaatan kepada arahan penting'],2,'Peristiwa Uhud menunjukkan akibat apabila arahan tidak dipatuhi.']
-]
-},
-{
-title:'Perang Khandak', sub:'Strategi dan kerjasama',
-tag:'CHECKPOINT 05', x:250, y:180,
-story:'<p>Ketika musuh mengancam Madinah, umat Islam menggali parit sebagai strategi pertahanan. Cadangan ini dikaitkan dengan Salman al-Farisi RA. Peristiwa ini menunjukkan kepentingan <strong>kebijaksanaan, perbincangan dan kerjasama</strong>.</p>',
-qs:[
-['Apakah strategi pertahanan yang digunakan dalam Perang Khandak?',['Membina kapal','Menggali parit','Berpindah ke Mesir'],1,'Parit digali untuk menghalang kemaraan musuh.'],
-['Siapakah sahabat yang mencadangkan strategi menggali parit?',['Salman al-Farisi RA','Bilal bin Rabah RA','Abu Hurairah RA'],0,'Salman al-Farisi RA mencadangkan strategi tersebut.'],
-['Apakah nilai yang ditonjolkan dalam Perang Khandak?',['Mementingkan diri','Bertindak tanpa berbincang','Kerjasama dan kebijaksanaan'],2,'Kerjasama dan strategi bijak membantu mempertahankan Madinah.']
-]
-},
-{
-title:'Pembukaan Kota Makkah', sub:'Kemaafan dan kebijaksanaan',
-tag:'CHECKPOINT 06', x:350, y:180,
-story:'<p>Pada tahun 8 Hijrah, Rasulullah SAW memimpin umat Islam memasuki Makkah. Baginda menunjukkan sifat pemaaf terhadap ramai penduduk yang pernah memusuhi umat Islam. Peristiwa ini menjadi teladan tentang <strong>rendah hati, rahmat dan memaafkan apabila berkuasa</strong>.</p>',
-qs:[
-['Pada tahun Hijrah ke berapakah Pembukaan Kota Makkah berlaku?',['Tahun 2 Hijrah','Tahun 8 Hijrah','Tahun 11 Hijrah'],1,'Pembukaan Kota Makkah berlaku pada tahun kelapan Hijrah.'],
-['Apakah sikap Rasulullah SAW terhadap ramai penduduk Makkah selepas kemenangan?',['Memaafkan mereka','Mengusir semua penduduk','Membalas dendam kepada semua orang'],0,'Baginda menunjukkan sifat pemaaf dan rahmat.'],
-['Apakah teladan yang boleh kita amalkan daripada peristiwa ini?',['Membalas kesalahan tanpa berfikir','Berbangga apabila menang','Memaafkan dan merendah diri'],2,'Kemenangan tidak sepatutnya menjadikan kita sombong atau pendendam.']
-]
-}
-];
+        // Data Checkpoint Umrah
+        const checkpoints = [
+            { id: 'miqat', name: "1. Miqat", x: 100, y: 500, radius: 45, color: "#8e44ad", info: "Miqat ialah sempadan tempat atau masa yang ditetapkan untuk berniat ihram Umrah." },
+            { id: 'tawaf', name: "2. Tawaf (Kaabah)", x: 350, y: 300, radius: 95, color: "#2c3e50", info: "Mengelilingi Kaabah sebanyak 7 pusingan mengikut lawan jam bermula dari Hajarul Aswad." },
+            { id: 'sai', name: "3. Sa'i (Safa & Marwah)", x: 700, y: 300, radius: 55, color: "#d35400", info: "Berjalan ulang-alik sebanyak 7 kali antara Bukit Safa dan Bukit Marwah." },
+            { id: 'tahallul', name: "4. Tahallul", x: 850, y: 150, radius: 45, color: "#27ae60", info: "Bercukur atau menggunting sekurang-kurangnya 3 helai rambut sebagai penutup ihram." },
+            { id: 'safwa', name: "5. Safwa Tower", x: 850, y: 500, radius: 55, color: "#f39c12", info: "Lokasi terakhir untuk menduduki kuiz kefahaman Umrah bersama pemain lain." }
+        ];
 
-let current=0, qi=0, correct=0, score=0;
-let completed=new Set(), unlocked=0, answered=false;
-let playerPos={x:60,y:455};
-const $=id=>document.getElementById(id);
-const NS='http://www.w3.org/2000/svg';
+        let localPlayer = {
+            x: 100 + Math.random() * 40,
+            y: 520 + Math.random() * 30,
+            speed: 4,
+            gender: Math.random() > 0.5 ? 'male' : 'female',
+            tawafCount: 0
+        };
 
-function drawMap(){
- const walls=$('walls'),nodes=$('nodes');
- walls.innerHTML=''; nodes.innerHTML='';
- const blocks=[
- [5,5,38,105],[100,0,24,100],[190,0,25,65],[280,0,22,100],
- [405,0,25,42],[0,130,80,24],[110,145,55,24],[190,100,40,25],
- [290,125,24,25],[390,140,85,25],[80,220,30,50],[165,220,25,30],
- [300,220,75,25],[420,220,25,50],[0,300,35,25],[90,300,25,35],
- [190,315,70,24],[310,290,25,65],[400,290,70,25],[10,400,25,60],
- [95,400,45,24],[185,465,25,45],[290,465,55,24],[400,390,25,70]
- ];
- blocks.forEach(([x,y,w,h])=>{
-  let r=document.createElementNS(NS,'rect');
-  r.setAttribute('x',x);r.setAttribute('y',y);
-  r.setAttribute('width',w);r.setAttribute('height',h);
-  r.setAttribute('rx',5);r.setAttribute('class','tile');
-  walls.appendChild(r);
- });
- stages.forEach((s,i)=>{
-  let g=document.createElementNS(NS,'g');
-  g.setAttribute('class','checkpoint '+(completed.has(i)?'done':i>unlocked?'locked':''));
-  g.setAttribute('transform',`translate(${s.x},${s.y})`);
-  g.setAttribute('tabindex','0');g.setAttribute('role','button');
-  g.setAttribute('aria-label',s.title);
-  let c=document.createElementNS(NS,'circle');c.setAttribute('r',19);g.appendChild(c);
-  let t=document.createElementNS(NS,'text');t.setAttribute('y',1);
-  t.textContent=completed.has(i)?'✓':i>unlocked?'🔒':String(i+1).padStart(2,'0');
-  g.appendChild(t);
-  g.addEventListener('click',()=>selectStage(i));
-  g.addEventListener('keydown',e=>{
-   if(e.key==='Enter'||e.key===' '){e.preventDefault();selectStage(i);}
-  });
-  nodes.appendChild(g);
- });
- movePlayer(playerPos.x,playerPos.y);
-}
+        let remotePlayers = {};
+        let keys = {};
+        let activeCheckpoint = null;
 
-function movePlayer(x,y){
- playerPos={x,y};
- $('player').style.left=(x/500*100)+'%';
- $('player').style.top=(y/520*100)+'%';
-}
+        // Daftar Pemain ke Firebase & Padam Bila Keluar
+        playerRef.set({
+            x: localPlayer.x,
+            y: localPlayer.y,
+            gender: localPlayer.gender,
+            updatedAt: Date.now()
+        });
+        playerRef.onDisconnect().remove();
 
-function selectStage(i){
- const s=stages[i];
- const distance=Math.hypot(playerPos.x-s.x,playerPos.y-s.y);
- if(distance>30){
-  $('nearHint').textContent='Gerakkan figura lebih dekat dengan checkpoint '+String(i+1).padStart(2,'0')+'.';
-  return;
- }
- if(i>unlocked){
-  $('nearHint').textContent='🔒 Lengkapkan checkpoint sebelumnya dahulu.';
-  return;
- }
- current=i;
- $('cpTitle').textContent=String(i+1).padStart(2,'0')+' · '+s.title;
- $('cpSubtitle').textContent=s.sub;
- $('cpTag').textContent=s.tag;
- $('story').innerHTML=s.story;
- $('quiz').classList.remove('active');
- $('quizStart').style.display='block';
- $('readBtn').disabled=completed.has(i);
- $('readBtn').textContent=completed.has(i)?'✓ Checkpoint selesai':'📖 Saya sudah baca — mula kuiz';
- $('toast').style.display='none';
- if(completed.has(i)){
-  $('toast').style.display='block';
-  $('toast').textContent='🏆 Anda sudah melengkapkan checkpoint ini!';
- }
- $('panel').classList.add('open');
- document.body.classList.add('modal-open');
- drawMap();
-}
+        // Kemaskini Lokasi Pemain Lain secara Real-time
+        playersRef.on('value', (snapshot) => {
+            const data = snapshot.val() || {};
+            remotePlayers = {};
+            let count = 0;
 
-function beginQuiz(){
- if(completed.has(current))return;
- qi=0;correct=0;answered=false;
- $('quizStart').style.display='none';
- $('quiz').classList.add('active');
- renderQ();
-}
+            for (let id in data) {
+                count++;
+                if (id !== playerId) {
+                    remotePlayers[id] = data[id];
+                }
+            }
+            document.getElementById('player-count').innerText = count;
+        });
 
-function renderQ(){
- const q=stages[current].qs[qi];
- answered=false;
- $('qcount').textContent=`SOALAN ${qi+1} DARIPADA 3`;
- $('question').textContent=q[0];
- $('answers').innerHTML='';
- $('feedback').textContent='';
- $('nextBtn').style.display='none';
- $('finishBtn').style.display='none';
- q[1].forEach((a,i)=>{
-  let b=document.createElement('button');
-  b.className='answer';
-  b.textContent=String.fromCharCode(65+i)+'. '+a;
-  b.onclick=()=>answer(i,b);
-  $('answers').appendChild(b);
- });
-}
+        // Kawalan Papan Kekunci
+        window.addEventListener('keydown', e => keys[e.key] = true);
+        window.addEventListener('keyup', e => keys[e.key] = false);
 
-function answer(i,btn){
- if(answered)return;
- answered=true;
- const q=stages[current].qs[qi];
- const buttons=[...$('answers').children];
- buttons.forEach(b=>b.disabled=true);
- if(i===q[2]){
-  correct++;score++;
-  btn.classList.add('correct');
-  $('feedback').textContent='✅ Tepat! '+q[3];
-  $('feedback').style.color='var(--green)';
- }else{
-  btn.classList.add('wrong');
-  buttons[q[2]].classList.add('correct');
-  $('feedback').textContent='💡 Belum tepat. '+q[3];
-  $('feedback').style.color='#d77d60';
- }
- updateStats();
- if(qi<2){
-  $('nextBtn').style.display='block';
-  $('nextBtn').textContent='Soalan seterusnya →';
- }else{
-  $('finishBtn').style.display='block';
-  $('finishBtn').textContent=correct===3?'Sahkan 3/3 & buka laluan ✨':'Cuba semula checkpoint 🔁';
- }
-}
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-function nextQ(){qi++;renderQ();}
+        function update() {
+            let moved = false;
+            if (keys['w'] || keys['W'] || keys['ArrowUp']) { localPlayer.y -= localPlayer.speed; moved = true; }
+            if (keys['s'] || keys['S'] || keys['ArrowDown']) { localPlayer.y += localPlayer.speed; moved = true; }
+            if (keys['a'] || keys['A'] || keys['ArrowLeft']) { localPlayer.x -= localPlayer.speed; moved = true; }
+            if (keys['d'] || keys['D'] || keys['ArrowRight']) { localPlayer.x += localPlayer.speed; moved = true; }
 
-function finishQuiz(){
- if(correct===3){
-  completed.add(current);
-  unlocked=Math.max(unlocked,Math.min(5,current+1));
-  $('quiz').classList.remove('active');
-  $('quizStart').style.display='block';
-  $('readBtn').disabled=true;
-  $('readBtn').textContent='✓ Checkpoint selesai';
-  $('toast').style.display='block';
-  $('toast').textContent=current===5
-   ?'🎉 Misi tamat! Anda berjaya menamatkan Jejak Sirah!'
-   :'🎉 Hebat! Skor 3/3. Checkpoint seterusnya kini dibuka.';
-  drawMap();updateStats();
-  if(current<5)setTimeout(()=>{if(completed.has(current))selectStage(current+1)},700);
- }else{
-  correct=0;qi=0;
-  $('feedback').textContent='';
-  $('quiz').classList.remove('active');
-  $('quizStart').style.display='block';
-  $('readBtn').textContent='🔁 Cuba kuiz sekali lagi';
-  $('readBtn').disabled=false;
- }
-}
+            // Hadkan Pergerakan Dalam Peta
+            localPlayer.x = Math.max(15, Math.min(canvas.width - 15, localPlayer.x));
+            localPlayer.y = Math.max(15, Math.min(canvas.height - 15, localPlayer.y));
 
-function updateStats(){
- const scoreEl=$('score');
- if(scoreEl)scoreEl.textContent=score;
- const unlockedEl=$('unlocked');
- if(unlockedEl)unlockedEl.textContent=unlocked+1;
- const percent=$('percent');
- if(percent)percent.textContent=Math.round(completed.size/6*100)+'%';
- const progress=$('progress');
- if(progress)progress.style.width=(completed.size/6*100)+'%';
-}
+            // Hantar Lokasi Baru ke Firebase
+            if (moved) {
+                playerRef.update({
+                    x: localPlayer.x,
+                    y: localPlayer.y,
+                    updatedAt: Date.now()
+                });
+            }
 
-const pathSegments=[
- [60,455,60,360],[60,360,150,360],[150,360,150,275],
- [150,275,250,275],[250,275,250,180],[250,180,350,180],
- [350,180,350,90],[350,90,440,90],
- [150,360,250,420],[250,420,355,420],[355,420,355,330],[355,330,430,330]
-];
+            checkCheckpoints();
+        }
 
-function distanceToSegment(px,py,x1,y1,x2,y2){
- const dx=x2-x1,dy=y2-y1,len=dx*dx+dy*dy;
- if(!len)return Math.hypot(px-x1,py-y1);
- const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/len));
- return Math.hypot(px-(x1+t*dx),py-(y1+t*dy));
-}
+        function checkCheckpoints() {
+            activeCheckpoint = null;
+            for (let cp of checkpoints) {
+                let dist = Math.hypot(localPlayer.x - cp.x, localPlayer.y - cp.y);
+                if (dist < cp.radius) {
+                    activeCheckpoint = cp;
+                    break;
+                }
+            }
 
-function onPath(x,y){
- return pathSegments.some(s=>distanceToSegment(x,y,...s)<=24);
-}
+            const prompt = document.getElementById('action-prompt');
+            if (activeCheckpoint) {
+                prompt.style.display = 'flex';
+                document.getElementById('current-cp').innerText = activeCheckpoint.name;
+            } else {
+                prompt.style.display = 'none';
+                document.getElementById('current-cp').innerText = "Tiada";
+            }
+        }
 
-function move(dir){
- let x=playerPos.x,y=playerPos.y;
- const step=18;
- if(dir==='up')y-=step;
- if(dir==='down')y+=step;
- if(dir==='left')x-=step;
- if(dir==='right')x+=step;
- x=Math.max(22,Math.min(478,x));
- y=Math.max(22,Math.min(498,y));
- if(!onPath(x,y)){
-  $('nearHint').textContent='🧱 Halangan! Ikut lorong maze untuk bergerak.';
-  return;
- }
- movePlayer(x,y);
- let near=-1,dist=999;
- stages.forEach((s,i)=>{
-  const d=Math.hypot(s.x-x,s.y-y);
-  if(d<dist){dist=d;near=i;}
- });
- document.querySelectorAll('.checkpoint').forEach((n,i)=>{
-  n.classList.toggle('near',i===near&&dist<=34);
- });
- if(dist<=34){
-  $('nearHint').textContent='📍 Anda hampir tiba! Tekan checkpoint '+String(near+1).padStart(2,'0')+' pada peta untuk membuka nota.';
- }else{
-  $('nearHint').textContent='Gerakkan figura ke checkpoint seterusnya.';
- }
-}
+        function drawAvatar(x, y, gender, isLocal = false) {
+            // Aura Pemain
+            ctx.beginPath();
+            ctx.arc(x, y, 13, 0, Math.PI * 2);
+            ctx.fillStyle = isLocal ? "#00ffcc" : "rgba(255,255,255,0.3)";
+            ctx.fill();
 
-document.querySelectorAll('[data-move]').forEach(button=>{
- button.style.touchAction='none';
- let holdTimer=null,repeatTimer=null;
- const stop=()=>{
-  if(holdTimer)clearTimeout(holdTimer);
-  if(repeatTimer)clearInterval(repeatTimer);
-  holdTimer=null;repeatTimer=null;
- };
- button.addEventListener('pointerdown',event=>{
-  event.preventDefault();
-  stop();
-  move(button.dataset.move);
-  holdTimer=setTimeout(()=>{
-   repeatTimer=setInterval(()=>move(button.dataset.move),180);
-  },300);
- });
- ['pointerup','pointercancel','pointerleave'].forEach(name=>{
-  button.addEventListener(name,stop);
- });
- button.addEventListener('contextmenu',event=>event.preventDefault());
-});
+            // Pakaian Avatar (Ihram Putih / Jubah Telekung)
+            ctx.beginPath();
+            ctx.arc(x, y, 10, 0, Math.PI * 2);
+            ctx.fillStyle = gender === 'male' ? '#ffffff' : '#222222';
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#000';
+            ctx.stroke();
 
-document.addEventListener('keydown',e=>{
- const map={
-  ArrowUp:'up',w:'up',W:'up',
-  ArrowDown:'down',s:'down',S:'down',
-  ArrowLeft:'left',a:'left',A:'left',
-  ArrowRight:'right',d:'right',D:'right'
- };
- if(map[e.key]&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){
-  e.preventDefault();move(map[e.key]);
- }
-});
+            // Kepala
+            ctx.beginPath();
+            ctx.arc(x, y - 2, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffcc99';
+            ctx.fill();
+        }
 
-$('readBtn').onclick=beginQuiz;
-$('nextBtn').onclick=nextQ;
-$('finishBtn').onclick=finishQuiz;
-$('closeModal').onclick=()=>{
- $('panel').classList.remove('open');
- document.body.classList.remove('modal-open');
-};
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-drawMap();
-updateStats();
-</script>
+            // Lukis Checkpoints
+            checkpoints.forEach(cp => {
+                ctx.beginPath();
+                ctx.arc(cp.x, cp.y, cp.radius, 0, Math.PI * 2);
+                ctx.fillStyle = cp.color + "22";
+                ctx.fill();
+                ctx.strokeStyle = cp.color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = "#111";
+                ctx.font = "bold 12px Arial";
+                ctx.fillText(cp.name, cp.x - 35, cp.y - cp.radius - 8);
+            });
+
+            // Model Kaabah 3D Ringkas
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(325, 275, 50, 50);
+            ctx.strokeStyle = "#d4af37";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(325, 275, 50, 50);
+
+            // Lukis Pemain-Pemain Lain
+            for (let id in remotePlayers) {
+                let p = remotePlayers[id];
+                drawAvatar(p.x, p.y, p.gender, false);
+            }
+
+            // Lukis Pemain Sendiri
+            drawAvatar(localPlayer.x, localPlayer.y, localPlayer.gender, true);
+        }
+
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Fungsi Modal UI
+        function openInfoModal() {
+            if (!activeCheckpoint) return;
+            document.getElementById('modal-title').innerText = activeCheckpoint.name;
+            document.getElementById('modal-desc').innerText = activeCheckpoint.info;
+            document.getElementById('infoModal').style.display = 'block';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function triggerSimulation() {
+            if (!activeCheckpoint) return;
+
+            if (activeCheckpoint.id === 'tawaf') {
+                if (localPlayer.tawafCount < 7) {
+                    localPlayer.tawafCount++;
+                    document.getElementById('tawaf-count').innerText = localPlayer.tawafCount;
+                    alert(`Simulasi Tawaf: Pusingan ke-${localPlayer.tawafCount} selesai!`);
+                } else {
+                    alert("Selesai 7 pusingan Tawaf! Sila teruskan ke Sa'i.");
+                }
+            } else if (activeCheckpoint.id === 'safwa') {
+                startQuiz();
+            } else {
+                alert(`Simulasi untuk ${activeCheckpoint.name} dimulakan!`);
+            }
+        }
+
+        // Soalan Kuiz Safwa Tower
+        const quizQuestions = [
+            { q: "Berapakah pusingan Tawaf yang wajib dilakukan?", a: ["5 Pusingan", "7 Pusingan", "3 Pusingan"], correct: 1 },
+            { q: "Sa'i bermula dari bukit apa dan berakhir di bukit apa?", a: ["Safa ke Marwah", "Marwah ke Safa", "Mina ke Arafah"], correct: 0 },
+            { q: "Apakah maksud Tahallul dalam ibadah Umrah?", a: ["Niat Umrah", "Bercukur/Menggunting rambut", "Berlari kecil"], correct: 1 }
+        ];
+        let currentQ = 0;
+        let score = 0;
+
+        function startQuiz() {
+            currentQ = 0;
+            score = 0;
+            showQuestion();
+            document.getElementById('quizModal').style.display = 'block';
+        }
+
+        function showQuestion() {
+            let q = quizQuestions[currentQ];
+            document.getElementById('quiz-question').innerText = (currentQ + 1) + ". " + q.q;
+            let optionsDiv = document.getElementById('quiz-options');
+            optionsDiv.innerHTML = '';
+
+            q.a.forEach((opt, idx) => {
+                let btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.style.width = '100%';
+                btn.style.margin = '5px 0';
+                btn.innerText = opt;
+                btn.onclick = () => answerQuiz(idx);
+                optionsDiv.appendChild(btn);
+            });
+        }
+
+        function answerQuiz(idx) {
+            if (idx === quizQuestions[currentQ].correct) score += 33.3;
+            currentQ++;
+
+            if (currentQ < quizQuestions.length) {
+                showQuestion();
+            } else {
+                alert(`Kuiz Tamat! Skor akhir anda: ${Math.round(score)}/100`);
+                closeModal('quizModal');
+            }
+        }
+
+        // Mula Permainan
+        gameLoop();
+    </script>
 </body>
 </html>
