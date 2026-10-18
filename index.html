@@ -1,399 +1,1177 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ms">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Labbaik 3D: The Sacred Journey (Simulasi Umrah 3D)</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0b0c10; color: #fff; text-align: center; overflow: hidden; }
-        
-        #canvas-container { position: relative; width: 100vw; height: 100vh; }
-        canvas { display: block; width: 100%; height: 100%; }
-        
-        /* HUD & Game UI Overlay */
-        #title-bar { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.7); padding: 10px 25px; border-radius: 20px; border: 2px solid #d4af37; box-shadow: 0 0 15px rgba(212, 175, 55, 0.4); text-align: center; }
-        #title-bar h1 { color: #d4af37; font-size: 20px; letter-spacing: 1px; }
-        #title-bar p { color: #ccc; font-size: 12px; }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<title>Safar Umrah</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: satu pemandangan 3D penuh skrin; HUD (stepper, panduan, konsol) melayang di atasnya.
+   Rupa tunggal malam di Makkah: biru malam, emas, marmar krim, hijau Safa-Marwah. */
+:root{
+  color-scheme:dark;
+  --night:#090e1d;
+  --panel:rgba(12,19,38,.82);
+  --panel-solid:#0e1730;
+  --line:rgba(226,185,91,.34);
+  --gold:#e2b95b;
+  --gold-ink:#2a1d05;
+  --marble:#efe6d2;
+  --dim:#a3aecb;
+  --emerald:#34b184;
+  --emerald-ink:#04241a;
+  --rose:#e8806f;
+  --font-display:'Amiri','Noto Naskh Arabic','Times New Roman',serif;
+  --font-body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--night);color:var(--marble);font-family:var(--font-body);font-size:15px;line-height:1.45;overflow:hidden;-webkit-tap-highlight-color:transparent}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 
-        #hud { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; text-align: left; font-size: 13px; color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.5); min-width: 220px; pointer-events: none; }
-        #hud div { margin-bottom: 6px; }
+#app{position:relative;width:100%;height:100%;overflow:hidden;background:var(--night)}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 
-        #action-prompt { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: none; gap: 15px; z-index: 10; }
-        .btn { background: linear-gradient(135deg, #d4af37, #aa7c11); color: #000; border: none; padding: 12px 24px; font-weight: bold; cursor: pointer; border-radius: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: 0.2s; }
-        .btn:hover { transform: scale(1.08); background: #f3cf65; }
+.layer{position:absolute;inset:0;padding-block:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
+.layer button,.layer .stick,.layer .sim,.layer .stepper,.layer .guide,.layer .avatars{pointer-events:auto}
 
-        /* Modal Windows */
-        .modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-                 background: #1a1a1a; border: 2px solid #d4af37; padding: 25px; border-radius: 12px; width: 450px; z-index: 100; box-shadow: 0 0 30px rgba(0,0,0,0.9); }
-        .modal h2 { color: #d4af37; margin-bottom: 12px; font-size: 22px; }
-        .modal p { color: #ddd; font-size: 14px; margin-bottom: 20px; line-height: 1.6; text-align: left; }
-    </style>
+.kicker{display:block;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600}
 
-    <!-- Three.js Library & OrbitControls -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <!-- Firebase Realtime Database SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+/* ---------- Menu ---------- */
+.menu{display:flex;flex-direction:column;justify-content:space-between;gap:12px;background:linear-gradient(to bottom,rgba(9,14,29,.82),rgba(9,14,29,0) 36%,rgba(9,14,29,0) 48%,rgba(9,14,29,.9) 100%)}
+.brand{max-width:560px}
+.brand .ar{font-family:var(--font-display);color:var(--gold);font-size:1.5rem;display:block}
+.brand h1{font-family:var(--font-display);font-weight:700;font-size:clamp(2.6rem,9vw,4.4rem);line-height:1;margin:.1em 0 .25em;letter-spacing:.005em}
+.brand p{margin:0;color:var(--dim);max-width:34ch}
+.pick{display:grid;gap:12px;max-width:640px;width:100%}
+.pick-copy h2{font-family:var(--font-display);font-size:2rem;line-height:1.1;margin:.1em 0 0}
+.pick-copy p{margin:.1em 0 0;color:var(--dim)}
+.avatars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.av{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px 8px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:var(--panel);color:var(--marble);cursor:pointer;font-size:.85rem;font-weight:600;min-width:0}
+.av svg{width:54px;height:54px;max-width:100%}
+.av[aria-checked="true"]{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold),0 10px 28px rgba(226,185,91,.2)}
+.btn{font:600 .9rem var(--font-body);letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:14px 26px;border:1px solid var(--gold);background:transparent;color:var(--gold);cursor:pointer}
+.btn.primary{background:var(--gold);color:var(--gold-ink)}
+.btn:active{transform:translateY(1px)}
+.fine{margin:0;font-size:.78rem;color:var(--dim);max-width:60ch}
+
+/* ---------- HUD ---------- */
+.hud{display:block}
+.top{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:flex-start;justify-content:space-between;pointer-events:none}
+.stepper{list-style:none;margin:0;padding:6px;display:flex;gap:4px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:999px;backdrop-filter:blur(8px);max-width:100%}
+.stepper li{display:flex;align-items:center;gap:8px;padding:3px 12px 3px 3px;border-radius:999px;color:var(--dim);font-size:.82rem;font-weight:500;white-space:nowrap}
+.stepper .dot{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:.78rem;font-weight:700;border:1px solid rgba(255,255,255,.28);font-variant-numeric:tabular-nums}
+.stepper li.active{color:var(--marble);background:rgba(226,185,91,.16)}
+.stepper li.active .dot{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}
+.stepper li.done .dot{background:var(--emerald);border-color:var(--emerald);color:var(--emerald-ink)}
+.stepper li.done{color:var(--marble)}
+.guide{display:flex;align-items:center;gap:8px;padding:8px 14px 8px 10px;background:var(--panel);border:1px solid var(--line);border-radius:999px;backdrop-filter:blur(8px);font-size:.85rem;font-weight:600;font-variant-numeric:tabular-nums}
+.guide svg{color:var(--gold);transition:transform .12s linear;flex:none}
+.guide.near{border-color:var(--emerald)}
+.guide.near svg{color:var(--emerald)}
+
+.console{position:absolute;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:max(14px,env(safe-area-inset-bottom,0px));display:flex;align-items:flex-end;justify-content:space-between;gap:12px;pointer-events:none;transition:opacity .25s,transform .25s}
+.console.off{opacity:0;transform:translateY(10px)}
+.console.off *{pointer-events:none!important}
+.stick{position:relative;width:132px;height:132px;border-radius:50%;background:radial-gradient(circle at 50% 50%,rgba(226,185,91,.1),rgba(12,19,38,.7) 70%);border:1px solid var(--line);backdrop-filter:blur(6px);touch-action:none}
+.stick::before{content:"";position:absolute;inset:34px;border-radius:50%;border:1px dashed rgba(226,185,91,.28)}
+.knob{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f6dc92,#c99a3a 70%);box-shadow:0 6px 14px rgba(0,0,0,.45)}
+.pad{display:flex;align-items:flex-end;gap:12px}
+.btn-run{width:62px;height:62px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--marble);font-weight:600;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;touch-action:none;user-select:none}
+.btn-run.on{background:rgba(226,185,91,.25);border-color:var(--gold)}
+.btn-a{width:94px;height:94px;border-radius:50%;border:2px solid rgba(255,255,255,.2);background:var(--panel);color:var(--dim);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;touch-action:manipulation}
+.btn-a .a1{font-family:var(--font-display);font-weight:700;font-size:1.7rem;line-height:1}
+.btn-a .a2{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+.btn-a:not(:disabled){background:var(--gold);color:var(--gold-ink);border-color:#f6dc92;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(226,185,91,.55)}50%{box-shadow:0 0 0 14px rgba(226,185,91,0)}}
+
+.sim{position:absolute;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:max(14px,env(safe-area-inset-bottom,0px));margin-inline:auto;max-width:620px;max-height:62%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px 16px;backdrop-filter:blur(10px)}
+.sim-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.sim-head h3{margin:.05em 0 0;font-family:var(--font-display);font-size:1.6rem;line-height:1.1}
+.sim-count{font-size:.85rem;font-weight:600;color:var(--gold);text-align:right;font-variant-numeric:tabular-nums;min-width:0}
+.sim-steps{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:5px}
+.sim-steps li{display:flex;gap:10px;align-items:flex-start;font-size:.88rem;color:var(--dim);min-width:0}
+.sim-steps li span:last-child{min-width:0}
+.sim-steps .tick{flex:none;width:16px;height:16px;margin-top:2px;border-radius:50%;border:1px solid rgba(255,255,255,.3)}
+.sim-steps li.done{color:var(--marble)}
+.sim-steps li.done .tick{background:var(--emerald);border-color:var(--emerald)}
+.sim-steps li.cur{color:var(--marble);font-weight:600}
+.sim-steps li.cur .tick{border-color:var(--gold);background:radial-gradient(circle,var(--gold) 38%,transparent 42%)}
+.card .sim-steps{margin:8px 0 0}
+.card .sim-steps li{color:var(--marble);font-size:.95rem}
+.card .sim-steps .tick{border-color:var(--gold);width:18px;height:18px;margin-top:2px}
+.card .kicker.sec{margin-top:16px}
+.card .doa{margin-top:8px}
+.bar{height:8px;border-radius:99px;background:rgba(255,255,255,.12);margin-top:12px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#b88a2e,var(--gold));border-radius:99px}
+.doa{margin-top:12px;padding:10px 12px;border-radius:12px;background:rgba(226,185,91,.08);border:1px solid rgba(226,185,91,.2)}
+.doa .ar{margin:0;font-family:var(--font-display);font-weight:700;font-size:1.55rem;line-height:1.9;text-align:center;color:var(--marble)}
+.doa .rumi{margin:2px 0 0;font-style:italic;color:var(--gold);font-size:.84rem;text-align:center}
+.doa .ms{margin:4px 0 0;font-size:.84rem;color:var(--dim);text-align:center}
+.toast{position:absolute;left:50%;top:max(76px,calc(env(safe-area-inset-top,0px) + 76px));transform:translateX(-50%);max-width:calc(100% - 32px);padding:10px 18px;border-radius:999px;background:var(--emerald);color:var(--emerald-ink);font-weight:700;font-size:.9rem;z-index:5;box-shadow:0 10px 24px rgba(0,0,0,.35)}
+
+/* ---------- Modal (selesai, kuiz) ---------- */
+.modal{position:absolute;inset:0;display:grid;place-items:center;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:rgba(6,10,22,.72);backdrop-filter:blur(4px);z-index:6}
+.card{width:min(580px,100%);max-height:100%;overflow:auto;background:var(--panel-solid);border:1px solid var(--line);border-radius:20px;padding:22px}
+.card h2{font-family:var(--font-display);font-size:2rem;line-height:1.1;margin:.1em 0 .3em}
+.card p{margin:.3em 0;color:var(--dim)}
+.card .ar-big{font-family:var(--font-display);font-size:2.2rem;color:var(--gold);margin:0;line-height:1.6}
+.card .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.qdots{display:flex;gap:6px;margin-bottom:14px}
+.qdots i{flex:1;height:5px;border-radius:9px;background:rgba(255,255,255,.14)}
+.qdots i.on{background:var(--gold)}
+.qdots i.ok{background:var(--emerald)}
+.qdots i.bad{background:var(--rose)}
+.qtext{font-family:var(--font-display);font-size:1.45rem;line-height:1.35;margin:.1em 0 .8em;color:var(--marble)!important}
+.opts{display:grid;gap:8px}
+.opt{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.04);color:var(--marble);font-size:.95rem;cursor:pointer;min-width:0}
+.opt b{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:.78rem;border:1px solid rgba(255,255,255,.3)}
+.opt span{min-width:0}
+.opt:hover:not(:disabled){border-color:var(--gold)}
+.opt.ok{border-color:var(--emerald);background:rgba(52,177,132,.16)}
+.opt.ok b{background:var(--emerald);border-color:var(--emerald);color:var(--emerald-ink)}
+.opt.bad{border-color:var(--rose);background:rgba(232,128,111,.14)}
+.opt.bad b{background:var(--rose);border-color:var(--rose);color:#3a0f08}
+.opt:disabled{cursor:default}
+.explain{margin-top:12px;padding:10px 12px;border-radius:12px;background:rgba(226,185,91,.08);border:1px solid rgba(226,185,91,.2);color:var(--marble);font-size:.9rem}
+.score{font-family:var(--font-display);font-size:4.2rem;line-height:1;color:var(--gold);margin:.1em 0}
+.score small{font-size:1.6rem;color:var(--dim)}
+.fatal{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:var(--night);z-index:9}
+
+@media (max-width:620px){
+  .stepper li:not(.active){padding-right:3px}
+  .stepper li:not(.active) .lbl{display:none}
+  .stick{width:118px;height:118px}
+  .btn-a{width:84px;height:84px}
+  .btn-run{width:54px;height:54px}
+}
+@media (max-height:520px){
+  .doa .ar{font-size:1.25rem;line-height:1.6}
+  .brand p,.fine{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .btn-a:not(:disabled){animation:none}
+  .console{transition:none}
+}
+</style>
 </head>
 <body>
+<div id="app">
+  <canvas id="gl" aria-label="Pemandangan 3D Masjidil Haram"></canvas>
 
-    <div id="canvas-container">
-        <div id="title-bar">
-            <h1>LABBAIK 3D: SIMULASI UMRAH</h1>
-            <p>Gunakan kekunci <b>W, A, S, D</b> / <b>Anak Panah</b> untuk mengawal avatar 3D</p>
-        </div>
+  <section id="menu" class="layer menu" aria-label="Pilih avatar">
+    <header class="brand">
+      <span class="ar" lang="ar" dir="rtl">رحلة العمرة</span>
+      <h1>Safar Umrah</h1>
+      <p>Berjalan dari Miqat hingga tahallul. Selesaikan lima checkpoint, kemudian jawab kuiz.</p>
+    </header>
+    <div class="pick">
+      <div class="pick-copy">
+        <span class="kicker">Pilih avatar</span>
+        <h2 id="avName">Ahmad</h2>
+        <p id="avDesc"></p>
+      </div>
+      <div class="avatars" id="avatars" role="radiogroup" aria-label="Pilih avatar"></div>
+      <button class="btn primary" id="btnStart" type="button">Mulakan perjalanan</button>
+      <p class="fine">Kawalan: joystick di skrin, WASD atau anak panah, atau gamepad. Seret skrin untuk memutar kamera. Simulasi ini untuk pengenalan asas. Rujuk mutawif atau ustaz untuk panduan sebenar.</p>
+    </div>
+  </section>
 
-        <div id="hud">
-            <div><b>ID Pemain:</b> <span id="player-id">Menyambung...</span></div>
-            <div><b>Pemain Aktif:</b> <span id="player-count">1</span>/30</div>
-            <div><b>LOKASI:</b> <span id="current-cp">Kawasan Masjid</span></div>
-            <div><b>Pusingan Tawaf:</b> <span id="tawaf-count">0</span>/7</div>
-        </div>
-
-        <div id="action-prompt">
-            <button class="btn" onclick="openInfoModal()">Buka Info Checkpoint</button>
-            <button class="btn" onclick="triggerSimulation()">Mula Simulasi</button>
-        </div>
-
-        <!-- Info Modal -->
-        <div id="infoModal" class="modal">
-            <h2 id="modal-title">Info Checkpoint</h2>
-            <p id="modal-desc">Maklumat berkaitan tempat suci...</p>
-            <button class="btn" onclick="closeModal('infoModal')">Tutup</button>
-        </div>
-
-        <!-- Quiz Modal -->
-        <div id="quizModal" class="modal">
-            <h2>Kuiz Safwa Tower</h2>
-            <p id="quiz-question">Soalan Kuiz...</p>
-            <div id="quiz-options"></div>
-        </div>
+  <section id="hud" class="layer hud" hidden>
+    <div class="top">
+      <ol class="stepper" id="stepper" aria-label="Kemajuan checkpoint"></ol>
+      <div class="guide" id="guide">
+        <svg id="guideArrow" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2 L19.5 21 L12 16.5 L4.5 21 Z" fill="currentColor"/></svg>
+        <span id="guideText"></span>
+      </div>
     </div>
 
-    <script>
-        // --- 1. FIREBASE SETUP (Multiplayer 30 Pemain) ---
-        const firebaseConfig = { databaseURL: "https://labbaik-umrah-default-rtdb.asia-southeast1.firebasedatabase.app" };
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        const playerId = "p_" + Math.random().toString(36).substr(2, 6);
-        document.getElementById('player-id').innerText = playerId;
+    <div class="console" id="console">
+      <div class="stick" id="stick" aria-label="Joystick pergerakan"><div class="knob" id="knob"></div></div>
+      <div class="pad">
+        <button type="button" class="btn-run" id="btnRun">Lari</button>
+        <button type="button" class="btn-a" id="btnA" disabled><span class="a1">A</span><span class="a2" id="btnALabel">Mula</span></button>
+      </div>
+    </div>
 
-        const playerRef = db.ref('players3d/' + playerId);
-        const playersRef = db.ref('players3d');
+    <div class="sim" id="sim" hidden>
+      <div class="sim-head">
+        <div><span class="kicker" id="simKicker"></span><h3 id="simTitle"></h3></div>
+        <div class="sim-count" id="simCount"></div>
+      </div>
+      <div class="bar" id="simBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="simFill"></i></div>
+    </div>
+  </section>
 
-        // --- 2. THREE.JS 3D SCENE SETUP ---
-        const container = document.getElementById('canvas-container');
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x1a233a); // Warna langit malam/fajar
-        scene.fog = new THREE.FogExp2(0x1a233a, 0.005);
+  <div class="toast" id="toast" hidden></div>
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        container.appendChild(renderer.domElement);
+  <div class="modal" id="done" hidden>
+    <div class="card">
+      <p class="ar-big" lang="ar" dir="rtl">تَقَبَّلَ اللَّهُ</p>
+      <h2>Umrah selesai</h2>
+      <p>Anda telah melalui Miqat, tawaf, solat sunat dan Zamzam, sa'ie, dan tahallul. Jawab lima soalan untuk menguji ingatan anda.</p>
+      <div class="row"><button class="btn primary" id="btnQuiz" type="button">Mula kuiz</button></div>
+    </div>
+  </div>
 
-        // Kawalan Kamera
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.maxPolarAngle = Math.PI / 2 - 0.05; // Elak kamera jatuh bawah tanah
+  <div class="modal" id="brief" hidden>
+    <div class="card" id="briefCard"></div>
+  </div>
 
-        // --- 3. PENCAHAYAAN (LIGHTING) ---
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
+  <div class="modal" id="quiz" hidden>
+    <div class="card" id="quizCard"></div>
+  </div>
 
-        const dirLight = new THREE.DirectionalLight(0xfffaed, 0.8);
-        dirLight.position.set(50, 80, 50);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
-        scene.add(dirLight);
+  <div class="fatal" id="fatal" hidden></div>
+</div>
 
-        // --- 4. BINAAN PERSEKITARAN 3D (MASJIDIL HARAM, KAABAH, SAFA/MARWA) ---
-        
-        // Dataran Masjidil Haram (Lantai Marmar)
-        const floorGeo = new THREE.PlaneGeometry(250, 250);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0xf0ebd8, roughness: 0.2 });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = -Math.PI / 2;
-        floor.receiveShadow = true;
-        scene.add(floor);
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const TAU=Math.PI*2;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
+const angLerp=(a,b,t)=>{const d=((b-a+Math.PI)%TAU+TAU)%TAU-Math.PI;return a+d*t;};
+const hex=n=>'#'+n.toString(16).padStart(6,'0');
 
-        // Kaabah 3D
-        const kaabaGroup = new THREE.Group();
-        const kaabaGeo = new THREE.BoxGeometry(16, 20, 16);
-        const kaabaMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
-        const kaabaMesh = new THREE.Mesh(kaabaGeo, kaabaMat);
-        kaabaMesh.position.y = 10;
-        kaabaMesh.castShadow = true;
-        kaabaMesh.receiveShadow = true;
-        kaabaGroup.add(kaabaMesh);
+function fatal(msg){const f=$('#fatal');f.hidden=false;f.innerHTML='<div><h2 style="font-family:var(--font-display);font-size:1.8rem;margin:0 0 .3em">Permainan tidak dapat dimuatkan</h2><p style="color:var(--dim);max-width:44ch;margin:0 auto">'+msg+'</p></div>';}
+if(typeof THREE==='undefined'){fatal('Pustaka 3D gagal dimuat. Semak sambungan internet dan muat semula halaman.');return;}
 
-        // Jalur Emas Kiswah Kaabah
-        const goldGeo = new THREE.BoxGeometry(16.2, 2, 16.2);
-        const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.2 });
-        const goldMesh = new THREE.Mesh(goldGeo, goldMat);
-        goldMesh.position.y = 14;
-        kaabaGroup.add(goldMesh);
-        scene.add(kaabaGroup);
+/* =========================================================
+   DATA
+   ========================================================= */
+const AVATARS=[
+  {id:'ahmad',name:'Ahmad',gender:'m',skin:0xd9a273,hair:0x1c1410,desc:'Lelaki, dua helai kain ihram putih'},
+  {id:'hafiz',name:'Hafiz',gender:'m',skin:0x8e5c3d,hair:0x100c0a,desc:'Lelaki, dua helai kain ihram putih'},
+  {id:'aisyah',name:'Aisyah',gender:'f',skin:0xf0cba6,hair:0,desc:'Wanita, telekung putih menutup aurat'},
+  {id:'nurul',name:'Nurul',gender:'f',skin:0xc78b5f,hair:0,desc:'Wanita, telekung putih menutup aurat'}
+];
 
-        // Bangunan Safa & Marwah 3D (Laluan Sa'i)
-        const saiGeo = new THREE.BoxGeometry(20, 8, 120);
-        const saiMat = new THREE.MeshStandardMaterial({ color: 0xe0c9a6, transparent: true, opacity: 0.7 });
-        const saiBuilding = new THREE.Mesh(saiGeo, saiMat);
-        saiBuilding.position.set(80, 4, 0);
-        saiBuilding.receiveShadow = true;
-        scene.add(saiBuilding);
+const R_TAWAF=15;
+const TH0=Math.atan2(-4.5,5);                       // sudut garisan Hajar Aswad (penjuru tenggara Kaabah)
+const TAWAF_START=[R_TAWAF*Math.cos(TH0),-R_TAWAF*Math.sin(TH0)];
+const ZAMZAM_STAND=[-29,21.5];
 
-        // Bukit Safa (Merah/Coklat) & Bukit Marwah
-        const hillGeo = new THREE.ConeGeometry(8, 6, 8);
-        const hillMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
-        const safaHill = new THREE.Mesh(hillGeo, hillMat);
-        safaHill.position.set(80, 3, -50);
-        scene.add(safaHill);
+const DOA={
+  talbiyah:{ar:'لَبَّيْكَ اللَّهُمَّ عُمْرَةً',rumi:"Labbaika Allahumma 'umratan",ms:'Aku menyahut panggilan-Mu ya Allah, untuk menunaikan umrah.'},
+  talbiyahFull:{ar:'لَبَّيْكَ اللَّهُمَّ لَبَّيْكَ، لَبَّيْكَ لَا شَرِيكَ لَكَ لَبَّيْكَ',rumi:"Labbaikallahumma labbaik, labbaika la syarika laka labbaik",ms:'Aku menyahut panggilan-Mu ya Allah, tiada sekutu bagi-Mu, aku menyahut.'},
+  istilam:{ar:'بِسْمِ اللَّهِ وَاللَّهُ أَكْبَرُ',rumi:'Bismillahi wallahu akbar',ms:'Dengan nama Allah, Allah Maha Besar. Diucapkan ketika menghadap Hajar Aswad.'},
+  rabbana:{ar:'رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ',rumi:"Rabbana atina fid-dunya hasanah wa fil-akhirati hasanah wa qina 'azaban-nar",ms:'Ya Tuhan kami, berilah kami kebaikan di dunia dan kebaikan di akhirat, dan peliharalah kami daripada azab neraka.'},
+  maqam:{ar:'وَاتَّخِذُوا مِن مَّقَامِ إِبْرَاهِيمَ مُصَلًّى',rumi:'Wattakhizu min maqami Ibrahima musalla',ms:'Jadikanlah sebahagian Maqam Ibrahim sebagai tempat solat. (Al-Baqarah: 125)'},
+  kafirun:{ar:'قُلْ يَا أَيُّهَا الْكَافِرُونَ',rumi:'Qul ya ayyuhal-kafirun',ms:'Rakaat pertama dibaca Al-Fatihah dan surah Al-Kafirun.'},
+  ikhlas:{ar:'قُلْ هُوَ اللَّهُ أَحَدٌ',rumi:'Qul huwallahu ahad',ms:'Rakaat kedua dibaca Al-Fatihah dan surah Al-Ikhlas.'},
+  zamzam:{ar:'اللَّهُمَّ إِنِّي أَسْأَلُكَ عِلْمًا نَافِعًا وَرِزْقًا وَاسِعًا وَشِفَاءً مِنْ كُلِّ دَاءٍ',rumi:"Allahumma inni as'aluka 'ilman nafi'a wa rizqan wasi'a wa syifa'an min kulli da'",ms:'Ya Allah, aku memohon ilmu yang bermanfaat, rezeki yang luas dan penyembuh daripada segala penyakit.'},
+  safa:{ar:'إِنَّ الصَّفَا وَالْمَرْوَةَ مِن شَعَائِرِ اللَّهِ',rumi:"Innas-safa wal-marwata min sya'airillah",ms:'Sesungguhnya Safa dan Marwah itu sebahagian daripada syiar Allah. (Al-Baqarah: 158)'},
+  saie:{ar:'رَبِّ اغْفِرْ وَارْحَمْ إِنَّكَ أَنْتَ الْأَعَزُّ الْأَكْرَمُ',rumi:"Rabbighfir warham innaka antal-a'azzul-akram",ms:'Ya Tuhanku, ampunilah dan rahmatilah, sesungguhnya Engkau Maha Perkasa lagi Maha Mulia.'},
+  tahallul:{ar:'الْحَمْدُ لِلَّهِ الَّذِي بِنِعْمَتِهِ تَتِمُّ الصَّالِحَاتُ',rumi:"Alhamdulillahilladzi bini'matihi tatimmush-shalihat",ms:'Segala puji bagi Allah yang dengan nikmat-Nya sempurnalah segala kebaikan.'}
+};
 
-        const marwahHill = new THREE.Mesh(hillGeo, hillMat);
-        marwahHill.position.set(80, 3, 50);
-        scene.add(marwahHill);
+/* Urutan pose solat untuk dua rakaat */
+const RAK=[['pray',2],['ruku',1],['pray',1],['sujud',1.5],['sit',1],['sujud',1.5]];
+const SEQ=RAK.concat(RAK,[['sit',1.2]]);
+const SEQ_TOTAL=SEQ.reduce((a,b)=>a+b[1],0);
+function seqPose(q){let t=clamp(q,0,.9999)*SEQ_TOTAL;for(const [n,w] of SEQ){if(t<w)return n;t-=w;}return 'sit';}
 
-        // Safwa Tower (Bangunan Menara Jam 3D)
-        const towerGeo = new THREE.CylinderGeometry(8, 10, 60, 8);
-        const towerMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a });
-        const safwaTower = new THREE.Mesh(towerGeo, towerMat);
-        safwaTower.position.set(-80, 30, -80);
-        safwaTower.castShadow = true;
-        scene.add(safwaTower);
+const CPS=[
+  {id:'miqat',short:'Miqat',name:'Miqat & Ihram',ar:'ميقات',pos:[0,64],dur:16,cam:null,
+   intro:'Miqat ialah sempadan yang mesti dilalui jemaah dengan niat umrah. Di sini jemaah berniat dan berihram sebelum memasuki Tanah Haram. Dari sinilah ibadah umrah bermula.',
+   steps:[
+     {at:0,text:'Mandi sunat dan berwuduk'},
+     {at:.22,text:'Memakai pakaian ihram. Lelaki: dua helai kain putih tanpa jahitan. Wanita: menutup aurat kecuali muka dan tapak tangan.'},
+     {at:.45,text:'Solat sunat ihram dua rakaat'},
+     {at:.7,text:'Berniat umrah dan membaca talbiyah',doa:DOA.talbiyah}
+   ],
+   drive(p,s){
+     player.face=Math.PI;
+     if(p<.22)player.pose='wash';
+     else if(p<.45)player.pose='raise';
+     else if(p<.7)player.pose=seqPose((p-.45)/.25);
+     else player.pose='raise';
+     if(p>.84){const t=smooth(.84,1,p);place(s.sx,s.sz-6*t);}
+     else place(s.sx,s.sz);
+     if(p>.84)s.doa=DOA.talbiyahFull;
+   }},
+  {id:'tawaf',short:'Tawaf',name:'Tawaf',ar:'طواف',pos:TAWAF_START,dur:30,cam:'radial',
+   intro:'Tawaf ialah mengelilingi Kaabah tujuh kali, bermula dan berakhir di garisan Hajar Aswad. Kaabah sentiasa berada di sebelah kiri dan pergerakan adalah melawan arah jam.',
+   steps:[
+     {at:0,text:'Berdiri segaris dengan Hajar Aswad, niat tawaf dan istilam',doa:DOA.istilam},
+     {at:.03,text:'Bergerak melawan arah jam, Kaabah di sebelah kiri. Tujuh pusingan.',doa:DOA.rabbana},
+     {at:.97,text:'Pusingan ketujuh berakhir di garisan Hajar Aswad'}
+   ],
+   drive(p,s){
+     const th=TH0+p*7*TAU;
+     const px=R_TAWAF*Math.cos(th),pz=-R_TAWAF*Math.sin(th);
+     const b=smooth(0,.04,p);
+     place(lerp(s.sx,px,b),lerp(s.sz,pz,b));
+     player.face=Math.atan2(-Math.sin(th),-Math.cos(th));
+     player.pose='idle';
+     const lf=p*7,lap=Math.min(7,Math.floor(lf)+1),fr=lf-Math.floor(lf);
+     s.count='Pusingan '+lap+' / 7';
+     s.doa=(fr<.1)?DOA.istilam:DOA.rabbana;
+   }},
+  {id:'maqam',short:'Solat & Zamzam',name:'Solat Sunat & Zamzam',ar:'مقام إبراهيم',pos:[-24,21],dur:26,cam:'radial',
+   intro:'Selepas tawaf, jemaah menunaikan solat sunat dua rakaat, sebaik-baiknya di belakang Maqam Ibrahim. Kemudian jemaah meminum air Zamzam sambil berdoa.',
+   steps:[
+     {at:0,text:'Berdiri di belakang Maqam Ibrahim menghadap Kaabah',doa:DOA.maqam},
+     {at:.1,text:'Solat sunat tawaf rakaat pertama',doa:DOA.kafirun},
+     {at:.36,text:'Rakaat kedua',doa:DOA.ikhlas},
+     {at:.62,text:'Berjalan ke tempat air Zamzam'},
+     {at:.78,text:'Minum air Zamzam sambil berdoa',doa:DOA.zamzam}
+   ],
+   drive(p,s){
+     const qibla=Math.atan2(-s.sx,-s.sz);
+     if(p<.62){
+       place(s.sx,s.sz);
+       player.face=qibla;
+       player.pose=p<.1?'idle':seqPose((p-.1)/.52);
+       s.count=p<.36?'Rakaat 1 / 2':(p<.62?'Rakaat 2 / 2':'');
+     }else{
+       const t=smooth(.62,.78,p);
+       const x=lerp(s.sx,ZAMZAM_STAND[0],t),z=lerp(s.sz,ZAMZAM_STAND[1],t);
+       if(p<.78){player.face=Math.atan2(ZAMZAM_STAND[0]-s.sx,ZAMZAM_STAND[1]-s.sz);player.pose='idle';}
+       else{player.face=Math.atan2(-3,1.5);player.pose='drink';}
+       place(x,z);
+       s.count='';
+     }
+   }},
+  {id:'saie',short:"Sa'ie",name:"Sa'ie",ar:'سعي',pos:[34,-31.5],dur:30,cam:'side',
+   intro:"Sa'ie ialah berjalan tujuh kali antara Bukit Safa dan Bukit Marwah. Bermula di Safa dan berakhir di Marwah. Lelaki berlari anak di antara dua tanda hijau, wanita berjalan seperti biasa.",
+   steps:[
+     {at:0,text:'Di Bukit Safa, membaca ayat syiar Allah',doa:DOA.safa},
+     {at:.03,text:'Berjalan dari Safa ke Marwah, tujuh perjalanan',doa:DOA.saie},
+     {at:.97,text:'Perjalanan ketujuh tamat di Bukit Marwah'}
+   ],
+   drive(p,s){
+     const L=66,u=clamp((p-.03)/.97,0,1)*7;
+     const k=Math.min(6,Math.floor(u)),f=u-k;
+     const z=(k%2===0)?-33+L*f:33-L*f;
+     const b=smooth(0,.03,p);
+     place(lerp(s.sx,34,b),lerp(s.sz,z,b));
+     player.face=(k%2===0)?0:Math.PI;
+     player.pose='idle';
+     player.jog=(player.def.gender==='m')&&p>.03&&Math.abs(z)<12;
+     s.count="Perjalanan "+(k+1)+' / 7';
+     s.doa=p<.06?DOA.safa:DOA.saie;
+   }},
+  {id:'tahallul',short:'Tahallul',name:'Tahallul',ar:'تحلل',pos:[22,38],dur:14,cam:null,
+   intro:'Tahallul ialah bercukur atau bergunting rambut untuk menamatkan ihram. Dengan tahallul, umrah menjadi sempurna dan larangan ihram terangkat.',
+   steps:[
+     {at:0,text:'Duduk menghadap kiblat di pusat tahallul'},
+     {at:.28,text:'Bercukur atau bergunting rambut, sekurang-kurangnya tiga helai'},
+     {at:.75,text:'Tahallul selesai, larangan ihram terangkat',doa:DOA.tahallul}
+   ],
+   drive(p,s){
+     place(s.sx,s.sz);
+     player.face=Math.atan2(-s.sx,-s.sz);
+     player.pose=p<.28?'idle':(p<.75?'hair':'raise');
+   }}
+];
 
-        // --- 5. CIPTA WATAK AVATAR 3D (IHRAM LELAKI / JUBAH PEREMPUAN) ---
-        function createAvatarMesh(gender) {
-            const avatarGroup = new THREE.Group();
+const QUIZ=[
+  {q:'Apakah yang dilakukan di Miqat sebelum memulakan umrah?',
+   a:['Berniat umrah dan berihram','Melontar jamrah','Wukuf di Arafah','Bermalam di Mina'],
+   ex:'Di Miqat, jemaah berniat umrah dan berihram. Selepas niat, larangan ihram mula terpakai.'},
+  {q:'Berapakah bilangan pusingan tawaf, dan dari mana ia bermula?',
+   a:['Tujuh pusingan, bermula dan berakhir di garisan Hajar Aswad','Lima pusingan, bermula di Maqam Ibrahim','Tujuh pusingan, bermula di Bukit Safa','Tiga pusingan, bermula di pintu Kaabah'],
+   ex:'Tawaf tujuh pusingan melawan arah jam dengan Kaabah di sebelah kiri, bermula dan berakhir di garisan Hajar Aswad.'},
+  {q:'Selepas tawaf, solat sunat tawaf dilakukan berapa rakaat dan sebaik-baiknya di mana?',
+   a:['Dua rakaat, di belakang Maqam Ibrahim','Empat rakaat, di Bukit Marwah','Dua rakaat, di Miqat','Satu rakaat, di Arafah'],
+   ex:'Solat sunat tawaf dua rakaat, sebaik-baiknya di belakang Maqam Ibrahim. Jika sesak, boleh dilakukan di mana-mana tempat di dalam masjid.'},
+  {q:"Sa'ie bermula dari bukit mana dan berakhir di bukit mana?",
+   a:['Bermula di Safa, berakhir di Marwah','Bermula di Marwah, berakhir di Safa','Bermula dan berakhir di Safa','Bermula dan berakhir di Marwah'],
+   ex:"Sa'ie tujuh perjalanan. Safa ke Marwah dikira satu, Marwah ke Safa dikira satu lagi, maka perjalanan ketujuh tamat di Marwah."},
+  {q:'Apakah amalan terakhir yang menyempurnakan umrah?',
+   a:['Bercukur atau bergunting rambut (tahallul)','Melontar tiga jamrah','Wukuf di Arafah','Bermalam di Muzdalifah'],
+   ex:'Tahallul ialah bercukur atau bergunting rambut. Selepas itu umrah sempurna dan larangan ihram terangkat.'}
+];
 
-            // Badan (Pakaian)
-            const bodyGeo = new THREE.CylinderGeometry(0.6, 0.8, 2.2, 16);
-            // Lelaki: Ihram Putih, Perempuan: Jubah/Telekung Hitam/Kelabu Dark
-            const bodyMat = new THREE.MeshStandardMaterial({ 
-                color: gender === 'male' ? 0xffffff : 0x222222, 
-                roughness: 0.8 
-            });
-            const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
-            bodyMesh.position.y = 1.1;
-            bodyMesh.castShadow = true;
-            avatarGroup.add(bodyMesh);
+/* =========================================================
+   STATE
+   ========================================================= */
+const state={mode:'menu',idx:0,sim:null,avatar:0,quizAt:0,score:0,answers:[]};
+const player={x:0,z:82,face:Math.PI,speed:0,phase:0,pose:'idle',jog:false,rig:null,def:AVATARS[0],cur:{al:0,ar:0,bend:0,drop:0,leg:0}};
+const cam={yaw:0,pitch:.36,dist:9,pos:new THREE.Vector3(0,1.7,87.5),look:new THREE.Vector3(0,1.9,70)};
+let time=0,lastDrag=-99,doneTimer=0;
+const pad={x:0,y:0},keys={},gp={x:0,y:0,rx:0,ry:0,run:false,a:false,aPrev:false};
+let runHeld=false;
 
-            // Kepala
-            const headGeo = new THREE.SphereGeometry(0.45, 16, 16);
-            const headMat = new THREE.MeshStandardMaterial({ color: 0xffcc99 });
-            const headMesh = new THREE.Mesh(headGeo, headMat);
-            headMesh.position.y = 2.5;
-            headMesh.castShadow = true;
-            avatarGroup.add(headMesh);
+function place(x,z){player.x=x;player.z=z;}
 
-            // Indicator Cincin Cahaya Bawah Tapak
-            const ringGeo = new THREE.RingGeometry(0.8, 1.0, 16);
-            const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, side: THREE.DoubleSide });
-            const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-            ringMesh.rotation.x = -Math.PI / 2;
-            ringMesh.position.y = 0.05;
-            avatarGroup.add(ringMesh);
+/* =========================================================
+   RENDERER & SCENE
+   ========================================================= */
+const canvas=$('#gl');
+let renderer;
+try{
+  renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,powerPreference:'high-performance'});
+}catch(e){fatal('Peranti atau pelayar ini tidak menyokong WebGL. Cuba pelayar lain seperti Chrome atau Safari terkini.');return;}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.outputEncoding=THREE.sRGBEncoding;
 
-            return avatarGroup;
-        }
+const scene=new THREE.Scene();
+scene.fog=new THREE.Fog(0x242a52,70,320);
+const camera=new THREE.PerspectiveCamera(52,1,.1,1200);
 
-        // Avatar Local
-        const localGender = Math.random() > 0.5 ? 'male' : 'female';
-        const localAvatar = createAvatarMesh(localGender);
-        localAvatar.position.set(0, 0, 40);
-        scene.add(localAvatar);
+const redrawers=[];
+function canvasTexture(w,h,draw){
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  const g=c.getContext('2d');
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;
+  const redraw=()=>{g.clearRect(0,0,w,h);draw(g,w,h);t.needsUpdate=true;};
+  redraw();redrawers.push(redraw);
+  return t;
+}
+function rrect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
 
-        let localData = {
-            x: 0,
-            z: 40,
-            gender: localGender,
-            tawafCount: 0
-        };
+function labelSprite(title,sub){
+  const t=canvasTexture(512,170,(g,w,h)=>{
+    g.fillStyle='rgba(10,16,34,.86)';rrect(g,8,10,w-16,h-20,50);g.fill();
+    g.strokeStyle='#e2b95b';g.lineWidth=3;g.stroke();
+    g.textAlign='center';g.textBaseline='middle';
+    g.fillStyle='#efe6d2';g.font='700 54px Amiri, "Times New Roman", serif';g.fillText(title,w/2,62);
+    if(sub){g.fillStyle='#e2b95b';g.font='700 40px Amiri, "Times New Roman", serif';g.fillText(sub,w/2,118);}
+  });
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false,fog:false}));
+  s.scale.set(10,3.3,1);s.renderOrder=10;return s;
+}
 
-        const remoteAvatars = {};
+/* ---- Langit, bintang, bulan ---- */
+(function sky(){
+  const t=canvasTexture(8,512,(g,w,h)=>{
+    const gr=g.createLinearGradient(0,0,0,h);
+    gr.addColorStop(0,'#04061a');gr.addColorStop(.32,'#0c1438');gr.addColorStop(.44,'#2a2f66');
+    gr.addColorStop(.49,'#a35f62');gr.addColorStop(.5,'#d88f55');gr.addColorStop(.56,'#3a2d3c');gr.addColorStop(1,'#1a1a28');
+    g.fillStyle=gr;g.fillRect(0,0,w,h);
+  });
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(900,32,20),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide,fog:false,depthWrite:false}));
+  dome.renderOrder=-10;scene.add(dome);
+  const n=700,pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){const a=Math.random()*TAU,e=Math.acos(1-Math.random()*.92);const r=850;pos[i*3]=r*Math.sin(e)*Math.cos(a);pos[i*3+1]=r*Math.cos(e);pos[i*3+2]=r*Math.sin(e)*Math.sin(a);}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(geo,new THREE.PointsMaterial({color:0xffffff,size:1.8,sizeAttenuation:false,transparent:true,opacity:.8,fog:false,depthWrite:false})));
+  const moon=new THREE.Mesh(new THREE.SphereGeometry(26,24,16),new THREE.MeshBasicMaterial({color:0xf6f0dc,fog:false}));
+  moon.position.set(260,330,-650);scene.add(moon);
+})();
 
-        // --- 6. MULTIPLAYER NETWORKING (FIREBASE) ---
-        playerRef.set({ x: localData.x, z: localData.z, gender: localData.gender });
-        playerRef.onDisconnect().remove();
+/* ---- Cahaya ---- */
+scene.add(new THREE.HemisphereLight(0xa4b2ec,0x54483a,1.05));
+const moonLight=new THREE.DirectionalLight(0xc9d3ff,.75);moonLight.position.set(70,120,-90);scene.add(moonLight);
+const kaabaLight=new THREE.PointLight(0xffd9a0,1.4,110,2);kaabaLight.position.set(0,20,0);scene.add(kaabaLight);
+const saLight=new THREE.PointLight(0xfff0cf,.9,100,2);saLight.position.set(34,12,0);scene.add(saLight);
+const gateLight=new THREE.PointLight(0xffe2b0,.9,60,2);gateLight.position.set(0,10,70);scene.add(gateLight);
 
-        playersRef.on('value', (snapshot) => {
-            const data = snapshot.val() || {};
-            let count = 0;
+const M=(c,r,m)=>new THREE.MeshStandardMaterial({color:c,roughness:r==null?.85:r,metalness:m||0});
+function box(w,h,d,mat,x,y,z,parent){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);(parent||scene).add(m);return m;}
+function cyl(rt,rb,h,mat,x,y,z,seg,parent){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||20),mat);m.position.set(x,y,z);(parent||scene).add(m);return m;}
 
-            for (let id in data) {
-                count++;
-                if (id !== playerId) {
-                    if (!remoteAvatars[id]) {
-                        // Cipta avatar 3D untuk pemain baharu yang masuk
-                        const newAvatar = createAvatarMesh(data[id].gender);
-                        scene.add(newAvatar);
-                        remoteAvatars[id] = newAvatar;
-                    }
-                    // Kemaskini kedudukan pemain lain
-                    remoteAvatars[id].position.x = data[id].x;
-                    remoteAvatars[id].position.z = data[id].z;
-                }
-            }
+const obstacles=[];
+const addObs=(x,z,r)=>obstacles.push({x:x,z:z,r:r});
+const pulsers=[];   // bahan yang berdenyut (lampu hijau permulaan tawaf)
 
-            // Padam avatar pemain yang keluar
-            for (let id in remoteAvatars) {
-                if (!data[id]) {
-                    scene.remove(remoteAvatars[id]);
-                    delete remoteAvatars[id];
-                }
-            }
-            document.getElementById('player-count').innerText = count;
-        });
+/* ---- Tanah dan lantai marmar ---- */
+(function ground(){
+  const g=new THREE.Mesh(new THREE.PlaneGeometry(1400,1400),new THREE.MeshStandardMaterial({color:0x4a4033,roughness:1}));
+  g.rotation.x=-Math.PI/2;scene.add(g);
+  const tex=canvasTexture(512,512,(c,w,h)=>{
+    c.fillStyle='#ece3cf';c.fillRect(0,0,w,h);
+    for(let i=0;i<1600;i++){c.fillStyle='rgba('+(150+Math.random()*60|0)+','+(135+Math.random()*50|0)+',105,'+(Math.random()*.05)+')';c.fillRect(Math.random()*w,Math.random()*h,2+Math.random()*12,1+Math.random()*3);}
+    c.strokeStyle='rgba(90,72,45,.4)';c.lineWidth=3;c.strokeRect(1,1,w-2,h-2);
+    c.strokeStyle='rgba(90,72,45,.13)';c.lineWidth=1;c.beginPath();c.moveTo(w/2,0);c.lineTo(w/2,h);c.moveTo(0,h/2);c.lineTo(w,h/2);c.stroke();
+  });
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(26,26);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(104,104),new THREE.MeshStandardMaterial({map:tex,roughness:.55,emissive:0x2a2314}));
+  floor.rotation.x=-Math.PI/2;floor.position.y=.02;scene.add(floor);
 
-        // --- 7. KAWALAN PERGERAKAN & CHECKPOINT DETECTOR ---
-        const keys = {};
-        window.addEventListener('keydown', e => keys[e.key] = true);
-        window.addEventListener('keyup', e => keys[e.key] = false);
+  const mataf=new THREE.Mesh(new THREE.RingGeometry(10.5,21,96),new THREE.MeshStandardMaterial({color:0xfaf3e0,roughness:.5,emissive:0x3a3220,side:THREE.DoubleSide}));
+  mataf.rotation.x=-Math.PI/2;mataf.position.y=.05;scene.add(mataf);
+  [10.5,21].forEach(r=>{const rg=new THREE.Mesh(new THREE.RingGeometry(r-.12,r+.12,96),new THREE.MeshBasicMaterial({color:0xe2b95b,side:THREE.DoubleSide,fog:false}));rg.rotation.x=-Math.PI/2;rg.position.y=.07;scene.add(rg);});
 
-        const checkpoints = [
-            { id: 'tawaf', name: "Tawaf (Kaabah 3D)", x: 0, z: 0, radius: 25, info: "Mengelilingi Kaabah sebanyak 7 pusingan mengikut lawan jam." },
-            { id: 'sai', name: "Sa'i (Safa & Marwah)", x: 80, z: 0, radius: 30, info: "Berjalan ulang-alik antara Bukit Safa dan Bukit Marwah." },
-            { id: 'safwa', name: "Safwa Tower", x: -80, z: -80, radius: 25, info: "Bilik kuiz dan rumusan pembelajaran ibadah Umrah." }
-        ];
+  // laluan dari tempat mula ke Miqat
+  const road=new THREE.Mesh(new THREE.PlaneGeometry(10,90),new THREE.MeshStandardMaterial({color:0x8b8372,roughness:.9}));
+  road.rotation.x=-Math.PI/2;road.position.set(0,.03,93);scene.add(road);
+})();
 
-        let activeCP = null;
+/* ---- Kaabah ---- */
+(function kaaba(){
+  const ribs=canvasTexture(256,256,(g,w,h)=>{g.fillStyle='#0b0b10';g.fillRect(0,0,w,h);g.fillStyle='rgba(255,255,255,.05)';for(let x=0;x<w;x+=16)g.fillRect(x,0,3,h);});
+  ribs.wrapS=ribs.wrapT=THREE.RepeatWrapping;ribs.repeat.set(2,1);
+  const body=box(10,13,9,new THREE.MeshStandardMaterial({map:ribs,roughness:.75}),0,6.5,0);
+  const bandTex=canvasTexture(256,64,(g,w,h)=>{
+    g.fillStyle='#b8892a';g.fillRect(0,0,w,h);
+    g.fillStyle='#e8c86e';for(let x=0;x<w;x+=32){g.beginPath();g.moveTo(x+16,6);g.lineTo(x+28,32);g.lineTo(x+16,58);g.lineTo(x+4,32);g.closePath();g.fill();}
+    g.strokeStyle='#7a5a18';g.lineWidth=3;g.strokeRect(0,0,w,h);
+  });
+  bandTex.wrapS=THREE.RepeatWrapping;bandTex.repeat.set(3,1);
+  box(10.1,1.5,9.1,new THREE.MeshStandardMaterial({map:bandTex,roughness:.4,metalness:.5,emissive:0x2a1d05}),0,9.4,0);
+  box(11.4,.7,10.4,M(0xe8e0cc,.6),0,.35,0);              // shadarwan
+  box(.2,5.2,3,M(0xd6a93a,.35,.8),5.08,4.9,-1.2);        // pintu emas
+  box(.3,5.6,3.4,M(0x8a6a1e,.5,.5),5.02,4.9,-1.2);
+  // Hajar Aswad: batu hitam berbingkai perak di penjuru tenggara, menghadap keluar secara menyerong
+  const rx=Math.cos(TH0),rz=-Math.sin(TH0);            // arah jejari ke penjuru
+  const tdx=-Math.sin(TH0),tdz=-Math.cos(TH0);         // arah tawaf (melawan arah jam)
+  const silver=new THREE.MeshStandardMaterial({color:0xd9dae4,roughness:.22,metalness:.85,emissive:0x34343c});
+  const ha=new THREE.Group();ha.position.set(5,1.9,4.5);ha.rotation.y=TH0;scene.add(ha);
+  const plate=new THREE.Mesh(new THREE.CylinderGeometry(.95,.95,.4,40),silver);plate.rotation.z=Math.PI/2;plate.position.x=.15;ha.add(plate);
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(.92,.13,14,48),silver);rim.rotation.y=Math.PI/2;rim.position.x=.38;ha.add(rim);
+  const stoneM=new THREE.MeshStandardMaterial({color:0x1a0f0b,roughness:.45,metalness:.1,emissive:0x0d0705});
+  const stone=new THREE.Mesh(new THREE.SphereGeometry(.7,24,16),stoneM);stone.scale.set(.42,1,.85);stone.position.x=.42;ha.add(stone);
+  [[.2,.34],[-.28,.3],[.05,-.3],[-.2,-.28],[.32,-.12]].forEach((o,i)=>{
+    const f=new THREE.Mesh(new THREE.SphereGeometry(.14+i*.012,12,8),new THREE.MeshStandardMaterial({color:i%2?0x3a2519:0x2a1810,roughness:.5}));
+    f.scale.set(.5,1,1);f.position.set(.62,o[0]*1.5,o[1]*1.4);ha.add(f);
+  });
+  const haLight=new THREE.PointLight(0xfff0c8,1,18,2);haLight.position.set(5+rx*2.2,2.8,4.5+rz*2.2);scene.add(haLight);
+  const haLab=labelSprite('Hajar Aswad','الحجر الأسود');haLab.scale.set(7,2.3,1);haLab.position.set(5+rx*1.2,5.2,4.5+rz*1.2);scene.add(haLab);
 
-        function updateMovement() {
-            let speed = 0.6;
-            let moved = false;
+  // Penanda lampu hijau: garisan mula tawaf merentasi mataf, dua tiang lampu dan palang di tepi
+  const GREEN=0x3dffb0;
+  const gm=()=>new THREE.MeshBasicMaterial({color:GREEN,fog:false});
+  const line=box(10.8,.06,.9,gm(),0,.11,0);
+  line.position.set(rx*15.8,.11,rz*15.8);line.rotation.y=TH0;
+  const glowFloor=new THREE.Mesh(new THREE.PlaneGeometry(10.8,3.4),new THREE.MeshBasicMaterial({color:GREEN,transparent:true,opacity:.3,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
+  glowFloor.rotation.order='YXZ';glowFloor.rotation.y=TH0;glowFloor.rotation.x=-Math.PI/2;glowFloor.position.set(rx*15.8,.1,rz*15.8);scene.add(glowFloor);
+  pulsers.push({m:glowFloor.material,base:.3,amp:.14});
+  const PR=21.8;
+  [-1,1].forEach(sd=>{
+    const px=rx*PR+tdx*sd*1.1,pz=rz*PR+tdz*sd*1.1;
+    box(.42,3.6,.42,gm(),px,1.8,pz);
+    const lamp=new THREE.Mesh(new THREE.SphereGeometry(.42,14,10),gm());lamp.position.set(px,3.8,pz);scene.add(lamp);
+    const beam=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,18,20,1,true),new THREE.MeshBasicMaterial({color:GREEN,transparent:true,opacity:.2,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
+    beam.position.set(px,9,pz);scene.add(beam);
+    pulsers.push({m:beam.material,base:.2,amp:.08});
+  });
+  const bar=box(2.6,.3,.34,gm(),rx*PR,3.6,rz*PR);bar.rotation.y=TH0+Math.PI/2;
+  const gl=new THREE.PointLight(GREEN,1.6,34,2);gl.position.set(rx*(PR-1),3.4,rz*(PR-1));scene.add(gl);
+  const sl=labelSprite('Mula Tawaf','بداية الطواف');sl.scale.set(8,2.7,1);sl.position.set(rx*PR,6.2,rz*PR);scene.add(sl);
+  addObs(0,0,8.4);
+})();
 
-            if (keys['w'] || keys['W'] || keys['ArrowUp']) { localData.z -= speed; moved = true; }
-            if (keys['s'] || keys['S'] || keys['ArrowDown']) { localData.z += speed; moved = true; }
-            if (keys['a'] || keys['A'] || keys['ArrowLeft']) { localData.x -= speed; moved = true; }
-            if (keys['d'] || keys['D'] || keys['ArrowRight']) { localData.x += speed; moved = true; }
+/* ---- Tiang, kornis, menara ---- */
+(function mosque(){
+  const col=M(0xe9dfc8,.6),cap=M(0xd1a644,.4,.7),beam=M(0xd8ceb6,.6);
+  const spots=[];
+  for(let i=-8;i<=8;i++){const v=i*6;spots.push([v,-48]);if(Math.abs(v)>6)spots.push([v,48]);}
+  for(let i=-7;i<=7;i++){const v=i*6;spots.push([-48,v]);spots.push([48,v]);}
+  spots.forEach(p=>{cyl(.7,.75,9,col,p[0],4.5,p[1],14);cyl(1,1,.5,cap,p[0],9.2,p[1],14);addObs(p[0],p[1],.9);});
+  box(98,1,1.8,beam,0,9.9,-48);box(1.8,1,98,beam,-48,9.9,0);box(1.8,1,98,beam,48,9.9,0);
+  box(43,1,1.8,beam,-27.5,9.9,48);box(43,1,1.8,beam,27.5,9.9,48);
+  [[-56,-56],[56,-56],[-56,56],[56,56]].forEach(p=>{
+    cyl(1.5,2.2,40,M(0xe4dac2,.6),p[0],20,p[1],20);
+    [26,34].forEach(y=>{cyl(2.6,2.6,.6,cap,p[0],y,p[1],20);});
+    cyl(1.8,1.8,.5,new THREE.MeshBasicMaterial({color:0xffe19a,fog:false}),p[0],30,p[1],20);
+    const cone=new THREE.Mesh(new THREE.ConeGeometry(2.2,8,20),M(0x2f6f5b,.5));cone.position.set(p[0],44,p[1]);scene.add(cone);
+    const tip=new THREE.Mesh(new THREE.SphereGeometry(.7,12,8),cap);tip.position.set(p[0],48.6,p[1]);scene.add(tip);
+    addObs(p[0],p[1],3);
+  });
+})();
 
-            if (moved) {
-                localAvatar.position.x = localData.x;
-                localAvatar.position.z = localData.z;
+/* ---- Gerbang Miqat & lampu jalan ---- */
+(function miqat(){
+  const stone=M(0xe4dac2,.6),cap=M(0xd1a644,.4,.7);
+  [-6,6].forEach(x=>{box(1.8,10,1.8,stone,x,5,64);box(2.4,.6,2.4,cap,x,10.3,64);addObs(x,64,1.2);});
+  box(15,1.6,2.2,stone,0,10.8,64);
+  const t=canvasTexture(512,160,(g,w,h)=>{
+    g.fillStyle='#0f6b4d';g.fillRect(0,0,w,h);g.strokeStyle='#e2b95b';g.lineWidth=6;g.strokeRect(8,8,w-16,h-16);
+    g.textAlign='center';g.textBaseline='middle';g.fillStyle='#fff6df';
+    g.font='700 64px Amiri, serif';g.fillText('ميقات',w/2,52);g.font='700 50px "Hanken Grotesk", sans-serif';g.fillText('MIQAT',w/2,112);
+  });
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(9.6,3),new THREE.MeshBasicMaterial({map:t,fog:false}));
+  sign.position.set(0,7.6,65.2);scene.add(sign);
+  for(let i=0;i<7;i++){[-6.5,6.5].forEach(x=>{
+    const z=70+i*10;
+    cyl(.12,.15,5,M(0x2a2a30,.6),x,2.5,z,8);
+    const l=new THREE.Mesh(new THREE.SphereGeometry(.5,12,8),new THREE.MeshBasicMaterial({color:0xffe3a0,fog:false}));l.position.set(x,5.3,z);scene.add(l);
+  });}
+})();
 
-                // Kamera sentiasa mengekori avatar
-                camera.position.set(localData.x, localData.y + 20, localData.z + 30);
-                controls.target.set(localData.x, 0, localData.z);
+/* ---- Maqam Ibrahim & Zamzam ---- */
+(function maqam(){
+  const gold=M(0xd6a93a,.35,.8);
+  box(3.2,.5,3.2,M(0xe8e0cc,.6),-24,.25,16);
+  box(2.2,2.2,2.2,new THREE.MeshStandardMaterial({color:0xc99a34,roughness:.35,metalness:.8,transparent:true,opacity:.85}),-24,1.6,16);
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(1.5,20,10,0,TAU,0,Math.PI/2),gold);dome.position.set(-24,2.7,16);scene.add(dome);
+  addObs(-24,16,2.2);
+  [-1,0,1].forEach(i=>{
+    cyl(.5,.5,1.5,M(0xc4ccd6,.35,.8),-32+i*1.4,.85,23,16);
+    box(.12,.12,.4,M(0x1f8f6b,.5),-32+i*1.4,1.2,23.6);
+  });
+  box(5,.2,2,M(0x1f8f6b,.5),-32,2.8,23);
+  [-2.3,2.3].forEach(dx=>box(.2,2.8,.2,M(0xc4ccd6,.4,.6),-32+dx,1.4,23));
+  addObs(-32,23,2.6);
+})();
 
-                // Kemaskini lokasi ke Firebase
-                playerRef.update({ x: localData.x, z: localData.z });
-            }
+/* ---- Lorong Sa'ie, Safa & Marwah ---- */
+(function saie(){
+  const t=canvasTexture(256,256,(g,w,h)=>{
+    g.fillStyle='#d5ddd0';g.fillRect(0,0,w,h);
+    g.strokeStyle='rgba(60,80,60,.3)';g.lineWidth=2;g.strokeRect(1,1,w-2,h-2);
+    g.strokeStyle='rgba(60,80,60,.14)';g.beginPath();g.moveTo(w/2,0);g.lineTo(w/2,h);g.stroke();
+  });
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(2,17);
+  const lane=new THREE.Mesh(new THREE.PlaneGeometry(8,68),new THREE.MeshStandardMaterial({map:t,roughness:.6,emissive:0x1a2418}));
+  lane.rotation.x=-Math.PI/2;lane.position.set(34,.06,0);scene.add(lane);
+  [30,38].forEach(x=>box(.3,.12,68,new THREE.MeshBasicMaterial({color:0x34d39a,fog:false}),x,.12,0));
+  // tanda lampu hijau (zon lari anak untuk lelaki)
+  [-12,12].forEach(z=>{[29.6,38.4].forEach(x=>{
+    box(.45,5,.45,new THREE.MeshBasicMaterial({color:0x4cf0b0,fog:false}),x,2.5,z);
+  });box(8.8,.3,.4,new THREE.MeshBasicMaterial({color:0x4cf0b0,fog:false}),34,5.1,z);});
+  // bukit Safa dan Marwah
+  [-39,39].forEach(z=>{
+    const rock=M(0x6e6559,.95);
+    [[0,0,4.2],[-2.4,1.2,3.2],[2.2,1.5,3],[0,2.6,2.6]].forEach((o,i)=>{
+      const r=new THREE.Mesh(new THREE.DodecahedronGeometry(o[2],0),rock);r.position.set(34+o[0],o[2]*.55+(i?o[1]*.5:0),z);r.rotation.set(i,i*1.3,0);scene.add(r);
+    });
+    addObs(34,z,4.4);
+  });
+  const sa=labelSprite('Safa','الصفا');sa.position.set(34,9,-39);scene.add(sa);
+  const ma=labelSprite('Marwah','المروة');ma.position.set(34,9,39);scene.add(ma);
+})();
 
-            // Semak Checkpoint
-            activeCP = null;
-            for (let cp of checkpoints) {
-                let dist = Math.hypot(localData.x - cp.x, localData.z - cp.z);
-                if (dist < cp.radius) {
-                    activeCP = cp;
-                    break;
-                }
-            }
+/* ---- Pusat Tahallul ---- */
+(function tahallul(){
+  const green=M(0x1f8f6b,.5);
+  [[-2.4,-2.4],[2.4,-2.4],[-2.4,2.4],[2.4,2.4]].forEach(o=>box(.22,3.2,.22,M(0xe4dac2,.5),22+o[0],1.6,38+o[1]));
+  box(6,.25,6,green,22,3.3,38);
+  box(1.4,.5,1.4,M(0x3a2e24,.8),22,.6,38.4);box(1.4,.9,.25,M(0x3a2e24,.8),22,1.1,37.8);
+  box(1.2,1.6,.08,new THREE.MeshStandardMaterial({color:0xaec7d6,roughness:.15,metalness:.9}),22,2,35.6);
+})();
 
-            const prompt = document.getElementById('action-prompt');
-            if (activeCP) {
-                prompt.style.display = 'flex';
-                document.getElementById('current-cp').innerText = activeCP.name;
-            } else {
-                prompt.style.display = 'none';
-                document.getElementById('current-cp').innerText = "Dataran Masjid";
-            }
-        }
+/* ---- Penanda checkpoint ---- */
+const markers=CPS.map((cp,i)=>{
+  const g=new THREE.Group();g.position.set(cp.pos[0],0,cp.pos[1]);
+  const ring=new THREE.Mesh(new THREE.RingGeometry(2.7,3.3,56),new THREE.MeshBasicMaterial({color:0xe2b95b,transparent:true,opacity:.95,side:THREE.DoubleSide,fog:false}));
+  ring.rotation.x=-Math.PI/2;ring.position.y=.1;g.add(ring);
+  const disc=new THREE.Mesh(new THREE.CircleGeometry(2.7,56),new THREE.MeshBasicMaterial({color:0xe2b95b,transparent:true,opacity:.18,side:THREE.DoubleSide,fog:false,depthWrite:false}));
+  disc.rotation.x=-Math.PI/2;disc.position.y=.09;g.add(disc);
+  const beam=new THREE.Mesh(new THREE.CylinderGeometry(2.4,2.4,70,32,1,true),new THREE.MeshBasicMaterial({color:0xf0cd78,transparent:true,opacity:.16,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
+  beam.position.y=35;g.add(beam);
+  const lab=labelSprite((i+1)+'. '+cp.short,cp.ar);lab.position.y=8;g.add(lab);
+  scene.add(g);
+  return {g:g,ring:ring,disc:disc,beam:beam,lab:lab};
+});
+function refreshMarkers(){
+  markers.forEach((m,i)=>{
+    const st=i<state.idx?'done':(i===state.idx&&state.mode!=='menu'&&state.mode!=='quiz'?'active':'locked');
+    const col=st==='done'?0x34b184:(st==='active'?0xe2b95b:0x7d8bb0);
+    m.ring.material.color.setHex(col);m.disc.material.color.setHex(col);
+    m.ring.material.opacity=st==='locked'?.35:.95;m.disc.material.opacity=st==='locked'?.06:.18;
+    m.beam.visible=st==='active';
+    m.lab.visible=st!=='done';
+  });
+}
 
-        // --- 8. GAME LOOP & RENDER ---
-        function animate() {
-            requestAnimationFrame(animate);
-            updateMovement();
-            controls.update();
-            
-            // Putaran perlahan Kaabah untuk efek visual
-            goldMesh.rotation.y += 0.002;
-            
-            renderer.render(scene, camera);
-        }
+/* ---- Cincin kemajuan di kaki avatar ---- */
+let progRing=null,progLast=-1;
+function setProgRing(p){
+  if(Math.abs(p-progLast)<.004&&progRing)return;
+  progLast=p;
+  if(progRing){progRing.geometry.dispose();scene.remove(progRing);progRing=null;}
+  if(p<=.002)return;
+  progRing=new THREE.Mesh(new THREE.RingGeometry(1.25,1.5,48,1,Math.PI/2,-TAU*clamp(p,.003,1)),new THREE.MeshBasicMaterial({color:0xf0cd78,side:THREE.DoubleSide,fog:false,transparent:true,opacity:.95}));
+  progRing.rotation.x=-Math.PI/2;progRing.position.y=.14;scene.add(progRing);
+}
 
-        // Resize Window
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+/* =========================================================
+   AVATAR
+   ========================================================= */
+const POSES={
+  idle:{al:0,ar:0,bend:0,drop:0,leg:0},
+  raise:{al:-2.75,ar:-2.75,bend:0,drop:0,leg:0},
+  pray:{al:-1.05,ar:-1.05,bend:0,drop:0,leg:0},
+  ruku:{al:-1.25,ar:-1.25,bend:1.3,drop:0,leg:0},
+  sujud:{al:-1.55,ar:-1.55,bend:1.5,drop:.45,leg:.85},
+  sit:{al:-.7,ar:-.7,bend:.12,drop:.5,leg:-1.35},
+  drink:{al:0,ar:-2.3,bend:-.05,drop:0,leg:0},
+  hair:{al:0,ar:-2.65,bend:0,drop:0,leg:0},
+  wash:{al:-.9,ar:-.9,bend:.15,drop:0,leg:0}
+};
 
-        // --- 9. INTERAKSI UI / MODAL ---
-        function openInfoModal() {
-            if (!activeCP) return;
-            document.getElementById('modal-title').innerText = activeCP.name;
-            document.getElementById('modal-desc').innerText = activeCP.info;
-            document.getElementById('infoModal').style.display = 'block';
-        }
+function buildAvatar(d){
+  const female=d.gender==='f';
+  const skin=M(d.skin,.7),white=M(0xf7f3e8,.9),hairM=M(d.hair||0x111111,.9),sandal=M(0x5a3d26,.9);
+  const black=new THREE.MeshBasicMaterial({color:0x120d0a});
+  const root=new THREE.Group();root.scale.setScalar(1.12);
+  const add=(parent,geo,mat,x,y,z)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x||0,y||0,z||0);parent.add(m);return m;};
+  const torso=new THREE.Group();torso.position.y=.92;root.add(torso);
+  add(torso,new THREE.BoxGeometry(.56,.72,.3),female?white:skin,0,.38,0);
+  add(torso,new THREE.CylinderGeometry(.07,.08,.14,10),skin,0,.8,0);
+  const head=new THREE.Group();head.position.set(0,.98,0);torso.add(head);
+  add(head,new THREE.SphereGeometry(.2,20,16),skin,0,0,0);
+  add(head,new THREE.SphereGeometry(.026,8,6),black,-.075,.03,.186);
+  add(head,new THREE.SphereGeometry(.026,8,6),black,.075,.03,.186);
+  if(female){
+    const dbl=white.clone();dbl.side=THREE.DoubleSide;
+    const hij=add(head,new THREE.SphereGeometry(.245,22,14,0,TAU,0,Math.PI*.58),dbl,0,0,-.02);hij.rotation.x=-.55;
+    add(torso,new THREE.CylinderGeometry(.2,.37,.52,22,1,true),dbl,0,.62,0);
+  }else{
+    const hr=add(head,new THREE.SphereGeometry(.21,18,10,0,TAU,0,Math.PI*.48),hairM,0,.02,-.015);hr.rotation.x=-.3;
+    add(torso,new THREE.BoxGeometry(.3,.78,.36),white,.14,.37,0);
+    add(torso,new THREE.BoxGeometry(.34,.14,.36),white,.25,.76,0);
+  }
+  const arms=[];
+  [1,-1].forEach(s=>{
+    const a=new THREE.Group();a.position.set(s*.37,.72,0);torso.add(a);
+    add(a,new THREE.BoxGeometry(.15,.62,.15),female?white:skin,0,-.3,0);
+    if(!female&&s===1)add(a,new THREE.BoxGeometry(.17,.3,.17),white,0,-.12,0);
+    add(a,new THREE.SphereGeometry(.08,10,8),skin,0,-.66,0);
+    arms.push(a);
+  });
+  const legs=[];
+  [1,-1].forEach(s=>{
+    const l=new THREE.Group();l.position.set(s*.14,.92,0);root.add(l);
+    add(l,new THREE.BoxGeometry(.2,.88,.22),female?white:skin,0,-.44,0);
+    add(l,new THREE.BoxGeometry(.22,.1,.34),sandal,0,-.9,.06);
+    legs.push(l);
+  });
+  if(female){add(root,new THREE.CylinderGeometry(.3,.5,.98,24),white,0,.52,0);}
+  else{add(root,new THREE.CylinderGeometry(.3,.36,.7,20),white,0,.62,0);}
+  const shadow=new THREE.Mesh(new THREE.CircleGeometry(.6,24),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.38,depthWrite:false}));
+  shadow.rotation.x=-Math.PI/2;shadow.position.y=.04;
+  const holder=new THREE.Group();holder.add(root);holder.add(shadow);
+  return {holder:holder,root:root,torso:torso,arms:arms,legs:legs,shadow:shadow};
+}
 
-        function closeModal(id) {
-            document.getElementById(id).style.display = 'none';
-        }
+const podium=new THREE.Group();podium.position.set(0,0,83);
+(function(){
+  const pd=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.7,.28,40),M(0x3b3328,.6,.2));pd.position.y=.14;podium.add(pd);
+  const pr=new THREE.Mesh(new THREE.TorusGeometry(1.52,.04,8,48),new THREE.MeshBasicMaterial({color:0xe2b95b,fog:false}));pr.rotation.x=Math.PI/2;pr.position.y=.29;podium.add(pr);
+  scene.add(podium);
+})();
 
-        function triggerSimulation() {
-            if (!activeCP) return;
+function setAvatar(i){
+  state.avatar=i;player.def=AVATARS[i];
+  if(player.rig){scene.remove(player.rig.holder);}
+  player.rig=buildAvatar(AVATARS[i]);
+  scene.add(player.rig.holder);
+  player.cur={al:0,ar:0,bend:0,drop:0,leg:0};
+  player.pose='idle';player.jog=false;
+  $('#avName').textContent=AVATARS[i].name;
+  $('#avDesc').textContent=AVATARS[i].desc;
+  document.querySelectorAll('.av').forEach((b,k)=>b.setAttribute('aria-checked',k===i?'true':'false'));
+}
 
-            if (activeCP.id === 'tawaf') {
-                if (localData.tawafCount < 7) {
-                    localData.tawafCount++;
-                    document.getElementById('tawaf-count').innerText = localData.tawafCount;
-                    alert(`Simulasi 3D Tawaf: Pusingan ke-${localData.tawafCount} selesai!`);
-                } else {
-                    alert("Selesai 7 pusingan Tawaf! Sila bergerak ke kawasan Sa'i (Safa & Marwah).");
-                }
-            } else if (activeCP.id === 'safwa') {
-                startQuiz();
-            } else {
-                alert(`Simulasi 3D untuk ${activeCP.name} dimulakan!`);
-            }
-        }
+function animateAvatar(dt){
+  const r=player.rig;if(!r)return;
+  const h=r.holder;
+  h.position.set(player.x,0,player.z);
+  if(state.mode==='menu'){
+    h.position.set(0,.28,83);
+    r.root.rotation.y+=dt*.7;
+  }else{
+    r.root.rotation.y=angLerp(r.root.rotation.y,player.face,1-Math.exp(-dt*10));
+  }
+  const sp=player.speed;
+  const amp=clamp(sp/6,0,1.4)*(player.jog?1.4:1);
+  player.phase+=dt*(4+sp*.9);
+  const swing=Math.sin(player.phase)*.75*amp;
+  const P=POSES[player.pose]||POSES.idle;
+  let al=P.al,ar=P.ar,ll=P.leg,lr=P.leg;
+  const walking=amp>.08&&player.pose==='idle';
+  if(walking){ll=swing;lr=-swing;al=-swing*.8;ar=swing*.8;}
+  if(player.pose==='hair')ar+=Math.sin(time*9)*.22;
+  if(player.pose==='wash'){al+=Math.sin(time*7)*.3;ar-=Math.sin(time*7)*.3;}
+  const c=player.cur,k=1-Math.exp(-dt*(walking?20:8));
+  c.al=lerp(c.al,al,k);c.ar=lerp(c.ar,ar,k);c.bend=lerp(c.bend,P.bend,k);c.drop=lerp(c.drop,P.drop,k);
+  c.ll=lerp(c.ll==null?0:c.ll,ll,k);c.lr=lerp(c.lr==null?0:c.lr,lr,k);
+  r.arms[0].rotation.x=c.al;r.arms[1].rotation.x=c.ar;
+  r.legs[0].rotation.x=c.ll;r.legs[1].rotation.x=c.lr;
+  r.torso.rotation.x=c.bend;
+  r.root.position.y=-c.drop*1.12+(walking?Math.abs(Math.sin(player.phase))*.05*amp:0);
+  r.shadow.position.y=.04;
+}
 
-        // Kuiz
-        const quizQuestions = [
-            { q: "Berapakah pusingan Tawaf yang wajib dilakukan di Kaabah?", a: ["5 Pusingan", "7 Pusingan", "3 Pusingan"], correct: 1 },
-            { q: "Apakah pakaian ihram bagi lelaki?", a: ["Jubah Hitam", "2 Helaian Kain Putih Tanpa Jahitan", "Baju Melayu"], correct: 1 }
-        ];
-        let currentQ = 0, score = 0;
+/* =========================================================
+   KAMERA
+   ========================================================= */
+const menuPos=new THREE.Vector3(0,1.7,87.5),menuLook=new THREE.Vector3(0,1.9,70);
+const tPos=new THREE.Vector3(),tLook=new THREE.Vector3();
+function updateCamera(dt){
+  if(state.mode==='menu'){
+    tPos.copy(menuPos);tLook.copy(menuLook);
+  }else{
+    const sim=state.sim;
+    if(sim&&sim.cp.cam&&time-lastDrag>2.5){
+      const want=sim.cp.cam==='radial'?Math.atan2(player.x,player.z):Math.PI/2;
+      cam.yaw=angLerp(cam.yaw,want,1-Math.exp(-dt*1.8));
+      cam.pitch=lerp(cam.pitch,sim.cp.cam==='radial'?.3:.34,1-Math.exp(-dt*1.5));
+    }
+    const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch);
+    tPos.set(player.x+Math.sin(cam.yaw)*cp*cam.dist,1.2+sp*cam.dist,player.z+Math.cos(cam.yaw)*cp*cam.dist);
+    tLook.set(player.x,1.5,player.z);
+    if(sim&&sim.cp.cam==='radial'){tLook.x=lerp(player.x,0,.25);tLook.z=lerp(player.z,0,.25);tLook.y=2.5;}
+    if(tPos.y<.9)tPos.y=.9;
+  }
+  const k=1-Math.exp(-dt*(state.mode==='menu'?2.2:6));
+  cam.pos.lerp(tPos,k);cam.look.lerp(tLook,k);
+  camera.position.copy(cam.pos);camera.lookAt(cam.look);
+}
 
-        function startQuiz() {
-            currentQ = 0; score = 0;
-            showQuestion();
-            document.getElementById('quizModal').style.display = 'block';
-        }
+function resize(){
+  const w=window.innerWidth,h=window.innerHeight;
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h;
+  camera.fov=camera.aspect<.8?68:(camera.aspect<1.25?58:52);
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize',resize);
 
-        function showQuestion() {
-            let q = quizQuestions[currentQ];
-            document.getElementById('quiz-question').innerText = (currentQ + 1) + ". " + q.q;
-            let optionsDiv = document.getElementById('quiz-options');
-            optionsDiv.innerHTML = '';
+/* =========================================================
+   INPUT
+   ========================================================= */
+const stick=$('#stick'),knob=$('#knob');
+let stickId=null;
+function stickMove(e){
+  const r=stick.getBoundingClientRect();
+  const cx=r.left+r.width/2,cy=r.top+r.height/2;
+  let dx=e.clientX-cx,dy=e.clientY-cy;
+  const max=r.width/2-10,l=Math.hypot(dx,dy);
+  if(l>max){dx*=max/l;dy*=max/l;}
+  knob.style.transform='translate('+dx+'px,'+dy+'px)';
+  pad.x=dx/max;pad.y=-dy/max;
+}
+stick.addEventListener('pointerdown',e=>{stickId=e.pointerId;try{stick.setPointerCapture(e.pointerId);}catch(_){}stickMove(e);e.preventDefault();});
+stick.addEventListener('pointermove',e=>{if(e.pointerId===stickId)stickMove(e);});
+const stickEnd=e=>{if(e.pointerId===stickId){stickId=null;pad.x=pad.y=0;knob.style.transform='';}};
+stick.addEventListener('pointerup',stickEnd);stick.addEventListener('pointercancel',stickEnd);
 
-            q.a.forEach((opt, idx) => {
-                let btn = document.createElement('button');
-                btn.className = 'btn';
-                btn.style.width = '100%';
-                btn.style.margin = '5px 0';
-                btn.innerText = opt;
-                btn.onclick = () => {
-                    if (idx === q.correct) score += 50;
-                    currentQ++;
-                    if (currentQ < quizQuestions.length) showQuestion();
-                    else {
-                        alert(`Tahniah! Kuiz Tamat. Skor anda: ${score}/100`);
-                        closeModal('quizModal');
-                    }
-                };
-                optionsDiv.appendChild(btn);
-            });
-        }
+const btnRun=$('#btnRun');
+btnRun.addEventListener('pointerdown',e=>{runHeld=true;btnRun.classList.add('on');e.preventDefault();});
+['pointerup','pointercancel','pointerleave'].forEach(n=>btnRun.addEventListener(n,()=>{runHeld=false;btnRun.classList.remove('on');}));
 
-        // Mulakan Permainan 3D
-        animate();
-    </script>
+let drag=null;
+canvas.addEventListener('pointerdown',e=>{drag={id:e.pointerId,x:e.clientX,y:e.clientY};try{canvas.setPointerCapture(e.pointerId);}catch(_){}});
+canvas.addEventListener('pointermove',e=>{
+  if(!drag||e.pointerId!==drag.id)return;
+  const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
+  if(state.mode==='play'||state.mode==='sim'){cam.yaw-=dx*.006;cam.pitch=clamp(cam.pitch+dy*.004,.1,1.15);lastDrag=time;}
+});
+const dragEnd=e=>{if(drag&&e.pointerId===drag.id)drag=null;};
+canvas.addEventListener('pointerup',dragEnd);canvas.addEventListener('pointercancel',dragEnd);
+canvas.addEventListener('wheel',e=>{if(state.mode==='play'||state.mode==='sim'){cam.dist=clamp(cam.dist+e.deltaY*.01,5,18);e.preventDefault();}},{passive:false});
+
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(state.mode==='brief'){if(k==='escape')closeBrief();return;}
+  if(state.mode==='menu'){
+    if(k==='arrowleft')selectAvatar((state.avatar+3)%4);
+    if(k==='arrowright')selectAvatar((state.avatar+1)%4);
+    return;
+  }
+  if(state.mode!=='play'&&state.mode!=='sim')return;
+  if(['arrowup','arrowdown','arrowleft','arrowright',' '].indexOf(k)>=0)e.preventDefault();
+  keys[k]=true;
+  if(k==='enter'||k===' '||k==='f')tryAction();
+});
+window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
+
+function pollGamepad(){
+  gp.x=gp.y=gp.rx=gp.ry=0;gp.run=false;let a=false;
+  try{
+    const pads=navigator.getGamepads?navigator.getGamepads():[];
+    for(const p of pads){
+      if(!p||!p.connected)continue;
+      const dz=v=>Math.abs(v)<.18?0:v;
+      gp.x=dz(p.axes[0]||0);gp.y=-dz(p.axes[1]||0);
+      gp.rx=dz(p.axes[2]||0);gp.ry=dz(p.axes[3]||0);
+      a=!!(p.buttons[0]&&p.buttons[0].pressed);
+      gp.run=!!((p.buttons[1]&&p.buttons[1].pressed)||(p.buttons[7]&&p.buttons[7].pressed));
+      if(p.buttons[12]&&p.buttons[12].pressed)gp.y=1;if(p.buttons[13]&&p.buttons[13].pressed)gp.y=-1;
+      if(p.buttons[14]&&p.buttons[14].pressed)gp.x=-1;if(p.buttons[15]&&p.buttons[15].pressed)gp.x=1;
+      break;
+    }
+  }catch(_){}
+  if(a&&!gp.aPrev&&(state.mode==='play'))tryAction();
+  else if(a&&!gp.aPrev&&state.mode==='brief')startSim();
+  if(a&&!gp.aPrev&&state.mode==='menu')startGame();
+  gp.aPrev=a;
+}
+
+function readInput(){
+  let x=pad.x+gp.x,y=pad.y+gp.y;
+  if(keys['a']||keys['arrowleft'])x-=1;
+  if(keys['d']||keys['arrowright'])x+=1;
+  if(keys['w']||keys['arrowup'])y+=1;
+  if(keys['s']||keys['arrowdown'])y-=1;
+  const m=Math.hypot(x,y);if(m>1){x/=m;y/=m;}
+  return {x:x,y:y,run:runHeld||keys['shift']||gp.run};
+}
+
+/* =========================================================
+   LOGIK PERMAINAN
+   ========================================================= */
+const hud=$('#hud'),menuEl=$('#menu'),consoleEl=$('#console'),btnA=$('#btnA');
+const simEl=$('#sim');
+
+function selectAvatar(i){setAvatar(i);}
+(function buildAvatarCards(){
+  const wrap=$('#avatars');
+  AVATARS.forEach((d,i)=>{
+    const b=document.createElement('button');
+    b.type='button';b.className='av';b.setAttribute('role','radio');
+    const skin=hex(d.skin),hair=hex(d.hair||0x222222);
+    const svg=d.gender==='m'
+      ?'<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="31" fill="#16213f"/><path d="M8 62 Q10 45 32 43 Q54 45 56 62Z" fill="#f4efe2"/><path d="M8 62 Q9 50 20 46 L26 62Z" fill="'+skin+'"/><rect x="27" y="36" width="10" height="9" fill="'+skin+'"/><circle cx="32" cy="29" r="11" fill="'+skin+'"/><path d="M20.5 28 Q21 16 32 17 Q43 16 43.5 28 Q40 21 32 21 Q24 21 20.5 28Z" fill="'+hair+'"/></svg>'
+      :'<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="31" fill="#16213f"/><path d="M6 62 Q9 44 32 42 Q55 44 58 62Z" fill="#f4efe2"/><ellipse cx="32" cy="30" rx="16" ry="18" fill="#f4efe2"/><ellipse cx="32" cy="32" rx="9.5" ry="11" fill="'+skin+'"/><circle cx="28.5" cy="31" r="1.1" fill="#120d0a"/><circle cx="35.5" cy="31" r="1.1" fill="#120d0a"/></svg>';
+    b.innerHTML=svg+'<span>'+d.name+'</span>';
+    b.addEventListener('click',()=>selectAvatar(i));
+    wrap.appendChild(b);
+  });
+})();
+
+/* Stepper */
+function buildStepper(){
+  const ol=$('#stepper');ol.innerHTML='';
+  CPS.forEach((cp,i)=>{
+    const li=document.createElement('li');
+    li.innerHTML='<span class="dot">'+(i+1)+'</span><span class="lbl">'+cp.short+'</span>';
+    ol.appendChild(li);
+  });
+}
+const CHECK='<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7.5 L5.7 10.5 L11.5 3.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function updateStepper(){
+  [...$('#stepper').children].forEach((li,i)=>{
+    li.className=i<state.idx?'done':(i===state.idx?'active':'');
+    li.querySelector('.dot').innerHTML=i<state.idx?CHECK:String(i+1);
+    if(i===state.idx)li.setAttribute('aria-current','step');else li.removeAttribute('aria-current');
+  });
+}
+
+let toastT=0;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},2600);}
+
+function setConsole(on){consoleEl.classList.toggle('off',!on);}
+
+function startGame(){
+  if(state.mode!=='menu')return;
+  state.mode='play';state.idx=0;state.sim=null;
+  menuEl.hidden=true;hud.hidden=false;
+  place(0,82);player.face=Math.PI;player.pose='idle';
+  player.rig.root.rotation.y=Math.PI;
+  cam.yaw=0;cam.pitch=.36;cam.dist=window.innerWidth<700?10:9;
+  buildStepper();updateStepper();refreshMarkers();setConsole(true);simEl.hidden=true;
+  toast('Pergi ke penanda emas di Miqat');
+}
+
+function nearActive(){
+  if(state.idx>=CPS.length)return false;
+  const cp=CPS[state.idx];
+  return Math.hypot(player.x-cp.pos[0],player.z-cp.pos[1])<3.6;
+}
+function tryAction(){
+  if(state.mode==='play'&&nearActive())openBrief();
+}
+btnA.addEventListener('click',tryAction);
+$('#btnStart').addEventListener('click',startGame);
+
+/* Pop-up maklumat checkpoint: dipaparkan SEBELUM simulasi bermula */
+const briefEl=$('#brief'),briefCard=$('#briefCard');
+function openBrief(){
+  const cp=CPS[state.idx];
+  state.mode='brief';
+  setConsole(false);$('#guide').hidden=true;
+  player.pose='idle';
+  const seen=[];
+  cp.steps.forEach(st=>{if(st.doa&&seen.indexOf(st.doa)<0)seen.push(st.doa);});
+  let h='<span class="kicker">Checkpoint '+(state.idx+1)+' dari '+CPS.length+'</span>'
+    +'<p class="ar-big" lang="ar" dir="rtl">'+cp.ar+'</p>'
+    +'<h2>'+cp.name+'</h2><p>'+cp.intro+'</p>'
+    +'<span class="kicker sec">Langkah</span><ul class="sim-steps">'
+    +cp.steps.map(st=>'<li><span class="tick"></span><span>'+st.text+'</span></li>').join('')+'</ul>';
+  if(seen.length){
+    h+='<span class="kicker sec">Bacaan</span>'
+      +seen.map(d=>'<div class="doa"><p class="ar" lang="ar" dir="rtl">'+d.ar+'</p><p class="rumi">'+d.rumi+'</p><p class="ms">'+d.ms+'</p></div>').join('');
+  }
+  h+='<div class="row"><button class="btn primary" id="btnGo" type="button">Mula simulasi</button><button class="btn" id="btnBack" type="button">Kembali</button></div>';
+  briefCard.innerHTML=h;
+  briefCard.scrollTop=0;
+  briefEl.hidden=false;
+  $('#btnGo').addEventListener('click',startSim);
+  $('#btnBack').addEventListener('click',closeBrief);
+  $('#btnGo').focus();
+}
+function closeBrief(){
+  if(state.mode!=='brief')return;
+  briefEl.hidden=true;
+  state.mode='play';setConsole(true);$('#guide').hidden=false;
+}
+
+function startSim(){
+  if(state.mode!=='brief')return;
+  const cp=CPS[state.idx];
+  briefEl.hidden=true;
+  state.mode='sim';
+  state.sim={cp:cp,t:0,p:0,sx:player.x,sz:player.z,count:'',doa:null};
+  setConsole(false);
+  simEl.hidden=false;
+  $('#simKicker').textContent='Checkpoint '+(state.idx+1)+' dari '+CPS.length;
+  $('#simTitle').textContent=cp.name;
+  $('#simCount').textContent='0%';$('#simFill').style.width='0%';
+  $('#guide').hidden=true;
+  refreshMarkers();
+}
+
+function updateSim(dt){
+  const s=state.sim;
+  s.t+=dt;s.p=Math.min(1,s.t/s.cp.dur);
+  s.doa=null;s.count='';
+  s.cp.drive(s.p,s);
+  const pct=Math.round(s.p*100);
+  $('#simCount').textContent=(s.count?s.count+' · ':'')+pct+'%';
+  $('#simFill').style.width=pct+'%';
+  $('#simBar').setAttribute('aria-valuenow',String(pct));
+  setProgRing(s.p);
+  if(s.p>=1)finishSim();
+}
+
+function finishSim(){
+  const cp=state.sim.cp;
+  setProgRing(0);
+  player.pose='idle';player.jog=false;
+  state.sim=null;simEl.hidden=true;
+  state.idx++;
+  updateStepper();refreshMarkers();
+  toast(cp.name+' selesai');
+  if(state.idx>=CPS.length){
+    state.mode='done';setConsole(false);$('#guide').hidden=true;
+    doneTimer=setTimeout(()=>{$('#done').hidden=false;},1600);
+  }else{
+    state.mode='play';setConsole(true);$('#guide').hidden=false;
+  }
+}
+
+function resolveCollisions(){
+  for(const o of obstacles){
+    const dx=player.x-o.x,dz=player.z-o.z,d=Math.hypot(dx,dz),min=o.r+.45;
+    if(d<min&&d>.0001){player.x=o.x+dx/d*min;player.z=o.z+dz/d*min;}
+  }
+  player.x=clamp(player.x,-110,110);player.z=clamp(player.z,-110,118);
+}
+
+function updatePlay(dt){
+  const inp=readInput();
+  const mag=Math.hypot(inp.x,inp.y);
+  player.jog=false;
+  if(mag>.08){
+    const f={x:-Math.sin(cam.yaw),z:-Math.cos(cam.yaw)},r={x:Math.cos(cam.yaw),z:-Math.sin(cam.yaw)};
+    let mx=f.x*inp.y+r.x*inp.x,mz=f.z*inp.y+r.z*inp.x;
+    const l=Math.hypot(mx,mz);mx/=l;mz/=l;
+    const sp=(inp.run?12:7)*Math.min(1,mag);
+    player.x+=mx*sp*dt;player.z+=mz*sp*dt;
+    player.face=Math.atan2(mx,mz);
+    resolveCollisions();
+  }
+  if(Math.abs(gp.rx)>0||Math.abs(gp.ry)>0){cam.yaw-=gp.rx*2.2*dt;cam.pitch=clamp(cam.pitch+gp.ry*1.2*dt,.1,1.15);lastDrag=time;}
+  if(keys['q']){cam.yaw+=1.8*dt;lastDrag=time;}
+  if(keys['e']){cam.yaw-=1.8*dt;lastDrag=time;}
+  // panduan
+  const cp=CPS[state.idx];
+  if(cp){
+    const dx=cp.pos[0]-player.x,dz=cp.pos[1]-player.z,dist=Math.hypot(dx,dz);
+    const f={x:-Math.sin(cam.yaw),z:-Math.cos(cam.yaw)},r={x:Math.cos(cam.yaw),z:-Math.sin(cam.yaw)};
+    const rel=Math.atan2(dx*r.x+dz*r.z,dx*f.x+dz*f.z);
+    $('#guideArrow').style.transform='rotate('+(rel*180/Math.PI)+'deg)';
+    const near=dist<3.6;
+    $('#guide').classList.toggle('near',near);
+    $('#guideText').textContent=near?cp.short+' · tekan A untuk mula':(cp.short+' · '+Math.round(dist)+' m');
+    btnA.disabled=!near;
+    $('#btnALabel').textContent=near?'Mula':'Dekati';
+  }
+}
+
+/* ---- Kuiz ---- */
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const t=a[i];a[i]=a[j];a[j]=t;}return a;}
+const quizEl=$('#quiz'),quizCard=$('#quizCard');
+function startQuiz(){
+  $('#done').hidden=true;state.mode='quiz';state.quizAt=0;state.score=0;state.answers=[];
+  hud.hidden=true;quizEl.hidden=false;renderQuestion();
+}
+function dots(){return '<div class="qdots" aria-hidden="true">'+QUIZ.map((q,i)=>'<i class="'+(i<state.answers.length?(state.answers[i]?'ok':'bad'):(i===state.quizAt?'on':''))+'"></i>').join('')+'</div>';}
+function renderQuestion(){
+  const q=QUIZ[state.quizAt];
+  const opts=shuffle(q.a.map((t,i)=>({t:t,ok:i===0})));
+  let h=dots()+'<span class="kicker">Soalan '+(state.quizAt+1)+' dari '+QUIZ.length+'</span><p class="qtext">'+q.q+'</p><div class="opts">';
+  opts.forEach((o,i)=>{h+='<button type="button" class="opt" data-ok="'+(o.ok?1:0)+'"><b>'+'ABCD'[i]+'</b><span>'+o.t+'</span></button>';});
+  h+='</div><div id="qfeed"></div>';
+  quizCard.innerHTML=h;
+  quizCard.querySelectorAll('.opt').forEach(btn=>btn.addEventListener('click',()=>answer(btn)));
+}
+function answer(btn){
+  const ok=btn.dataset.ok==='1';
+  state.answers.push(ok);if(ok)state.score++;
+  quizCard.querySelectorAll('.opt').forEach(b=>{b.disabled=true;if(b.dataset.ok==='1')b.classList.add('ok');});
+  if(!ok)btn.classList.add('bad');
+  const last=state.quizAt===QUIZ.length-1;
+  $('#qfeed').innerHTML='<div class="explain"><strong>'+(ok?'Betul. ':'Belum tepat. ')+'</strong>'+QUIZ[state.quizAt].ex+'</div><div class="row"><button class="btn primary" id="btnNext" type="button">'+(last?'Lihat keputusan':'Soalan seterusnya')+'</button></div>';
+  quizCard.querySelector('.qdots').outerHTML=dots();
+  $('#btnNext').addEventListener('click',()=>{if(last)showResult();else{state.quizAt++;renderQuestion();}});
+  $('#btnNext').focus();
+}
+function showResult(){
+  const s=state.score;
+  const msg=s===5?'Mumtaz! Anda menguasai semua langkah umrah.':(s>=3?'Bagus. Ulang sekali lagi untuk menjadi sempurna.':'Teruskan belajar. Cuba main semula simulasi untuk mengingati setiap langkah.');
+  quizCard.innerHTML=dots()+'<span class="kicker">Keputusan kuiz</span><div class="score">'+s+'<small> / '+QUIZ.length+'</small></div><h2>'+(s===5?'Alhamdulillah':'Tahniah kerana menamatkan')+'</h2><p>'+msg+'</p><div class="row"><button class="btn primary" id="btnAgain" type="button">Main semula</button><button class="btn" id="btnRetry" type="button">Ulang kuiz</button></div>';
+  $('#btnAgain').addEventListener('click',resetGame);
+  $('#btnRetry').addEventListener('click',startQuiz);
+}
+$('#btnQuiz').addEventListener('click',startQuiz);
+
+function resetGame(){
+  clearTimeout(doneTimer);
+  quizEl.hidden=true;$('#done').hidden=true;briefEl.hidden=true;hud.hidden=true;simEl.hidden=true;$('#guide').hidden=false;
+  setProgRing(0);
+  state.mode='menu';state.idx=0;state.sim=null;
+  place(0,82);player.pose='idle';player.jog=false;player.speed=0;
+  menuEl.hidden=false;refreshMarkers();
+}
+
+/* =========================================================
+   LOOP
+   ========================================================= */
+let last=performance.now(),px=player.x,pz=player.z;
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min(.05,Math.max(.001,(now-last)/1000));last=now;time+=dt;
+  pollGamepad();
+  if(state.mode==='play')updatePlay(dt);
+  else if(state.mode==='sim')updateSim(dt);
+  const mv=Math.hypot(player.x-px,player.z-pz)/dt;
+  player.speed=lerp(player.speed,state.mode==='menu'?0:mv,1-Math.exp(-dt*12));
+  px=player.x;pz=player.z;
+  podium.visible=state.mode==='menu';
+  animateAvatar(dt);
+  updateCamera(dt);
+  // animasi penanda
+  markers.forEach((m,i)=>{
+    if(i===state.idx&&state.mode!=='menu'){
+      const s=1+Math.sin(time*3)*.06;m.ring.scale.set(s,s,1);
+      m.beam.material.opacity=.14+Math.sin(time*2.4)*.04;
+    }else m.ring.scale.set(1,1,1);
+  });
+  pulsers.forEach(p=>{p.m.opacity=p.base+Math.sin(time*3)*p.amp;});
+  if(progRing&&state.sim){progRing.position.x=player.x;progRing.position.z=player.z;}
+  renderer.render(scene,camera);
+}
+
+/* ---- Mula ---- */
+resize();
+setAvatar(0);
+buildStepper();
+refreshMarkers();
+try{
+  if(document.fonts&&document.fonts.load){
+    Promise.all([document.fonts.load('700 40px Amiri'),document.fonts.load('600 30px "Hanken Grotesk"')]).then(()=>redrawers.forEach(f=>f())).catch(()=>{});
+  }
+}catch(_){}
+requestAnimationFrame(frame);
+})();
+</script>
 </body>
 </html>
